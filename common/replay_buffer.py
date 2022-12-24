@@ -11,10 +11,10 @@ class Buffer:
         # create the buffer to store info
         self.buffer = dict()
         for i in range(self.args.n_agents):
-            self.buffer['o_%d' % i] = np.empty([self.size, self.args.obs_shape[i]])
+            self.buffer['o_%d' % i] = np.empty([self.size, self.args.public_obs_shape + self.args.private_obs_shape])
             self.buffer['u_%d' % i] = np.empty([self.size, self.args.action_shape[i]])
             self.buffer['r_%d' % i] = np.empty([self.size])
-            self.buffer['o_next_%d' % i] = np.empty([self.size, self.args.obs_shape[i]])
+            self.buffer['o_next_%d' % i] = np.empty([self.size, self.args.public_obs_shape + self.args.private_obs_shape])
         # thread lock
         self.lock = threading.Lock()
 

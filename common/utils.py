@@ -31,35 +31,15 @@ def store_args(method):
 
 
 def make_env(args):
-    # from multiagent.environment import MultiAgentEnv
-    # import multiagent.scenarios as scenarios
-    #
-    # # load scenario from script
-    # scenario = scenarios.load(args.scenario_name + ".py").Scenario()
-    #
-    # # create world
-    # world = scenario.make_world()
-    # # create multiagent environment
-    # env = MultiAgentEnv(world, scenario.reset_world, scenario.reward, scenario.observation)
-    # # env = MultiAgentEnv(world)
-    # args.n_players = env.n  # 包含敌人的所有玩家个数
-    # args.n_agents = env.n - args.num_adversaries  # 需要操控的玩家个数，虽然敌人也可以控制，但是双方都学习的话需要不同的算法
-    #
-    # args.obs_shape = [env.observation_space[i].shape[0] for i in range(args.n_agents)]  # 每一维代表该agent的obs维度
-    # action_shape = []
-    # for content in env.action_space:
-    #     action_shape.append(content.n)
-    # args.action_shape = action_shape[:args.n_agents]  # 每一维代表该agent的act维度
-    # args.high_action = 1
-    # args.low_action = -1
-
     from environment2.Area import Area
     from environment2.Constant import N_user, N_ETUAV, N_DPUAV
 
     env = Area()
 
     args.n_agents = N_ETUAV + N_DPUAV
-    args.obs_shape = env.state_dim
+    args.public_obs_shape = env.public_state_dim
+    args.private_obs_shape = env.private_state_dim
+    args.overall_obs_shape = env.overall_state_dim
     # action维数
     args.action_shape = [env.action_dim] * args.n_agents  # 每一维代表该agent的act维度
     # 输出上下限

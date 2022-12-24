@@ -23,7 +23,7 @@ def calcul_Prob_hat(radian: float) -> float:
 
 def calcul_channel_gain(position1: Position, position2: Position) -> float:
     """计算平均信道增益"""
-    beta_0 = 1*(10**(-3))
+    beta_0 = 1 * (10 ** (-3))
     alpha = 2
     radian = position1.downcast(position2)
     channel_gain = calcul_Prob_hat(radian) * (position1.distance(position2) ** (-alpha)) * beta_0
@@ -31,7 +31,7 @@ def calcul_channel_gain(position1: Position, position2: Position) -> float:
 
 
 def calcul_SNR(p: float) -> float:
-    sigma_2 = 1*(10**(-13))  # W
+    sigma_2 = 1 * (10 ** (-13))  # W
     """计算信噪比"""
     return p / sigma_2
 
@@ -60,15 +60,12 @@ def energy_by_speed(speed: float) -> float:
 class UAV:
     """UAV的基类"""
 
-    def __init__(self, position: Position,  speed_limit: float):
+    def __init__(self, position: Position, speed_limit: float):
         self.position = position
         """UAV所在位置"""
 
-
-
         self.speed_limit = speed_limit
         """飞行最大速度，单位m/s"""
-
 
     def get_tail(self):
         """得到历史轨迹"""
@@ -83,6 +80,11 @@ class UAV:
         self.position.move_by_radian(radian, rate * self.speed_limit * environment2.Constant.time_slice)
         return energy_by_speed(rate * self.speed_limit)
 
+    def move_by_radian_rate_2(self, radian: float, rate: float):
+        """无人机水平运动，radian和rate输入范围为-1到1"""
+        new_radian = (radian + 1.0) / 2.0 * 2 * math.pi
+        new_rate = (rate + 1.0) / 2.0
+        return self.move_by_radian_rate(new_radian, new_rate)
     # def add_temp_energy(self, energy:float):
     #     """一个时隙的能耗先暂时存放在这，时隙结束后再执行update_energy将能耗加入历史总能耗中"""
     #     self.temp_energy += energy

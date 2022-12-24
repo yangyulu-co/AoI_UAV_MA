@@ -2,6 +2,8 @@ import random
 
 import numpy as np
 import math
+
+from environment2.Library import get_random_task
 from environment2.Position import Position
 from environment2.Task import Task
 from environment2.UAV import calcul_SNR, calcul_channel_gain
@@ -115,7 +117,7 @@ class UE:
             # 低电量
             generate = random.random() < self.low_probability
         if generate and self.discharge(self.collect_energy):  # 如果要生成新数据和如果电量足够并扣除电量
-            self.task = Task()  # 生成新任务
+            self.task = get_random_task()  # 生成新任务
         else:
             if self.task is not None:
                 self.task.step()  # waiting_time + 1

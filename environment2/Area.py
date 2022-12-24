@@ -54,12 +54,15 @@ class Area:
 
     def __init__(self, x_range=500.0, y_range=500.0):
 
+        self.agent_num = N_ETUAV + N_DPUAV
         self.action_dim = 2  # 角度和rate
-        self.state_dim = 3 * N_user + (N_ETUAV + N_DPUAV) * (N_user + N_ETUAV + N_DPUAV - 1)  # 用户位置、AoI、lambda、队列状况，与其他所有UAV的位置
-        
+        self.overall_state_dim = 3 * N_user + (self.agent_num) * (N_user + self.agent_num - 1)  # 用户位置、AoI、lambda、队列状况，与其他所有UAV的位置
+        self.public_state_dim = 3 * N_user
+        self.private_state_dim = N_user + self.agent_num - 1
         self.public_state = np.empty((3 * N_user))  # 用户的AoI、lambda、队列状况是公有部分
-        self.private_state = np.empty((N_user + N_ETUAV + N_DPUAV - 1))  # 与其他的位置关系是私有部分
-        self.env_state = np.concatenate((self.public_state, self.private_state), axis=0)  # 环境的观测值
+        self.private_state = np.empty((N_user + self.agent_num - 1))  # 与其他的位置关系是私有部分
+        self.overall_state = np.concatenate((self.public_state, self.private_state), axis=0)  # 环境的观测值
+        self.state = self.generate_obs(self.overall_state)
         self.reward = 0  # 奖励函数
         self.done = False  # 当前episode是否结束
 
@@ -111,9 +114,11 @@ class Area:
         self.private_state = self.private_state.reshape(1, -1)[0]
 
         # 总的state
-        self.env_state = np.concatenate((self.public_state, self.private_state), axis=0)
+        self.overall_state = np.concatenate((self.public_state, self.private_state), axis=0)
+        # 返回的state
+        self.state = self.generate_obs(self.overall_state)
 
-        return self.env_state
+        return self.state
 
 
     def step(self, actions):  # action是每个agent动作向量(ndarray[0-2pi, 0-1])的列表，DP在前ET在后
@@ -129,11 +134,11 @@ class Area:
         etuav_move_energy = [0.0 for _ in range(N_ETUAV)]
         """ETUAV运动的能耗"""
         for i, etuav in enumerate(self.ETUAVs):
-            etuav_move_energy[i] = etuav.move_by_radian_rate(actions[N_DPUAV + i][0], actions[N_DPUAV + i][1])
+            etuav_move_energy[i] = etuav.move_by_radian_rate_2(actions[N_DPUAV + i][0], actions[N_DPUAV + i][1])
         dpuav_move_energy = [0.0 for _ in range(N_DPUAV)]
         """DPUAV运动的能耗"""
         for i, dpuav in enumerate(self.DPUAVs):
-            dpuav_move_energy[i] = dpuav.move_by_radian_rate(actions[i][0], actions[i][1])
+            dpuav_move_energy[i] = dpuav.move_by_radian_rate_2(actions[i][0], actions[i][1])
 
         # 计算连接情况
         link_dict = get_link_dict(self.UEs, self.DPUAVs)
@@ -186,15 +191,15 @@ class Area:
         self.private_state = np.stack(temp, axis=0)
         self.private_state = self.private_state.reshape(1, -1)[0]
         # print(self.private_state)
-        self.env_state = np.concatenate((self.public_state, self.private_state), axis=0)
+        self.overall_state = np.concatenate((self.public_state, self.private_state), axis=0)
+        # 返回的state
+        self.state = self.generate_obs(self.overall_state)
 
-        self.reward = -target
+        self.reward = [-target] * (N_DPUAV + N_ETUAV)
 
         self.done = False
 
-        return self.env_state, self.reward, self.done, ''
-
-
+        return self.state, self.reward, self.done, ''
 
 
     def calcul_relative_positions(self, type: str, index: int):
@@ -309,6 +314,18 @@ class Area:
     def generate_DPUAVs(self, num: int) -> [DPUAV]:
         """生成指定数量DPUAV，返回一个list"""
         return [DPUAV(self.generate_single_DPUAV_position()) for _ in range(num)]
+
+    def generate_obs(self, overall_state):
+        # 输入总观测值，返回每个用户观测值的list
+        s = []
+        for ax in range(self.agent_num):
+            single_state = np.concatenate((overall_state[0:self.public_state_dim],
+                                           overall_state[self.public_state_dim + ax * self.private_state_dim:
+                                                         self.public_state_dim + (
+                                                                     ax + 1) * self.private_state_dim]),
+                                          axis=0)
+            s.append(single_state)
+        return s
 
 
 if __name__ == "__main__":

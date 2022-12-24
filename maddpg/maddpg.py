@@ -1,6 +1,7 @@
 import torch
 import os
 from maddpg.actor_critic import Actor, Critic
+import numpy as np
 
 
 class MADDPG:
@@ -62,7 +63,7 @@ class MADDPG:
         for agent_id in range(self.args.n_agents):
             o.append(transitions['o_%d' % agent_id])
             u.append(transitions['u_%d' % agent_id])
-            o_next.append(transitions['o_next_%d' % agent_id])
+            o_next.append(transitions['o_next_%d' % agent_id])  # 有agent_num个索引，每个索引中是batch_size条记录，每条是该agent的观测值
 
         # calculate the target Q value function
         u_next = []
@@ -70,24 +71,29 @@ class MADDPG:
             # 得到下一个状态对应的动作
             index = 0
             for agent_id in range(self.args.n_agents):
+                # 计算所有agent下一步的动作
                 if agent_id == self.agent_id:
                     u_next.append(self.actor_target_network(o_next[agent_id]))
                 else:
                     # 因为传入的other_agents要比总数少一个，可能中间某个agent是当前agent，不能遍历去选择动作
                     u_next.append(other_agents[index].policy.actor_target_network(o_next[agent_id]))
                     index += 1
-            q_next = self.critic_target_network(o_next, u_next).detach()
+            # 得到去重后的环境
+            overall_state_next = self.generate_overall_state(o_next)
 
+            # 估计next_q
+            q_next = self.critic_target_network(overall_state_next, u_next).detach()
             target_q = (r.unsqueeze(1) + self.args.gamma * q_next).detach()
 
         # the q loss
-        q_value = self.critic_network(o, u)
+        overall_state = self.generate_overall_state(o)
+        q_value = self.critic_network(overall_state, u)
         critic_loss = (target_q - q_value).pow(2).mean()
 
         # the actor loss
         # 重新选择联合动作中当前agent的动作，其他agent的动作不变
         u[self.agent_id] = self.actor_network(o[self.agent_id])
-        actor_loss = - self.critic_network(o, u).mean()
+        actor_loss = - self.critic_network(overall_state, u).mean()
         # if self.agent_id == 0:
         #     print('critic_loss is {}, actor_loss is {}'.format(critic_loss, actor_loss))
         # update the network
@@ -114,4 +120,18 @@ class MADDPG:
         torch.save(self.actor_network.state_dict(), model_path + '/' + num + '_actor_params.pkl')
         torch.save(self.critic_network.state_dict(),  model_path + '/' + num + '_critic_params.pkl')
 
+    def generate_overall_state(self, state):
+        # 这里state有agent_num个索引，每个索引中是batch_size条记录，每条是该agent的观测值
+        # 需要处理成size条，每条由overall_state组成
+        # 输入每个智能体的观测值组成的列表，生成一个总的观测值（实现去重的工作）
+        overall_state = np.empty([self.args.batch_size, self.args.overall_obs_shape])
+        if state:
+            temp = np.empty([self.args.batch_size, self.args.overall_obs_shape - self.args.public_obs_shape])
+            for i in range(self.args.batch_size):
+                overall_state[i][:self.args.public_obs_shape] = state[0][i][:self.args.public_obs_shape]
+                for j in range(self.args.n_agents):
+                    temp[i][j*self.args.private_obs_shape:(j+1)*self.args.private_obs_shape] = \
+                        state[j][i][self.args.public_obs_shape:]
+                overall_state[i][self.args.public_obs_shape:] = temp[i][:]
 
+        return torch.tensor(overall_state, dtype=torch.float32)
