@@ -30,7 +30,7 @@ class MADDPG:
         if not os.path.exists(self.args.save_dir):
             os.mkdir(self.args.save_dir)
         # path to save the model
-        self.model_path = self.args.save_dir + '/' + self.args.scenario_name
+        self.model_path = self.args.save_dir + '/'
         if not os.path.exists(self.model_path):
             os.mkdir(self.model_path)
         self.model_path = self.model_path + '/' + 'agent_%d' % agent_id
@@ -111,7 +111,7 @@ class MADDPG:
 
     def save_model(self, train_step):
         num = str(train_step // self.args.save_rate)
-        model_path = os.path.join(self.args.save_dir, self.args.scenario_name)
+        model_path = self.args.save_dir
         if not os.path.exists(model_path):
             os.makedirs(model_path)
         model_path = os.path.join(model_path, 'agent_%d' % self.agent_id)

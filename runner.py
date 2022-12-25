@@ -16,7 +16,7 @@ class Runner:
         self.env = env
         self.agents = self._init_agents()
         self.buffer = Buffer(args)
-        self.save_path = self.args.save_dir + '/' + self.args.scenario_name
+        self.save_path = self.args.save_dir + '/'
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path)
 
@@ -61,6 +61,7 @@ class Runner:
                 plt.xlabel('episode * ' + str(self.args.evaluate_rate / self.episode_limit))
                 plt.ylabel('average returns')
                 plt.savefig(self.save_path + '/plt.png', format='png')
+                plt.close()
             self.noise = max(0.05, self.noise - 0.0000005)
             self.epsilon = max(0.05, self.epsilon - 0.0000005)
             np.save(self.save_path + '/returns.pkl', returns)
