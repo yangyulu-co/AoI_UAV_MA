@@ -57,13 +57,12 @@ class Area:
 
         self.agent_num = N_ETUAV + N_DPUAV
         self.action_dim = 2  # 角度和rate
-        self.overall_state_dim = 3 * N_user + (self.agent_num) * (N_user + self.agent_num - 1)  # 用户位置、AoI、lambda、队列状况，与其他所有UAV的位置
-        self.public_state_dim = 3 * N_user
-        self.private_state_dim = N_user + self.agent_num - 1
-        self.public_state = np.empty((3 * N_user))  # 用户的AoI、lambda、队列状况是公有部分
-        self.private_state = np.empty((N_user + self.agent_num - 1))  # 与其他的位置关系是私有部分
-        self.overall_state = np.concatenate((self.public_state, self.private_state), axis=0)  # 环境的观测值
-        self.state = self.generate_obs(self.overall_state)
+        self.overall_state_dim = 3 * N_user + (self.agent_num) * 2 * (N_user + self.agent_num - 1)
+        self.public_state_dim = 3 * N_user  # 用户的AoI、lambda、队列状况是公有部分
+        self.private_state_dim = 2 * (N_user + self.agent_num - 1)  # 与其他的位置关系是私有部分
+        self.public_state = np.array([])
+        self.private_state = []
+        self.state = np.array([])
         self.reward = 0  # 奖励函数
         self.done = False  # 当前episode是否结束
 
@@ -188,28 +187,31 @@ class Area:
         # 公共的环境信息
         self.public_state = np.concatenate((np.array(dpuav_aoi), np.array(ue_probability), np.array(ue_if_task)), axis=0)
         # 私有的环境信息(只取水平距离)
-        temp = [x[0][0:2] for y in dpuav_relative_positions for x in y] + [x[0][0:2] for y in etuav_relative_positions for x in y]
-        self.private_state = np.stack(temp, axis=0)
-        self.private_state = self.private_state.reshape(1, -1)[0]
-        # print(self.private_state)
-        self.overall_state = np.concatenate((self.public_state, self.private_state), axis=0)
+        for i in range(N_DPUAV):
+            self.private_state.append(np.array([]))
+            for j in range(self.private_state_dim // 2):
+                self.private_state[i] = np.append(self.private_state[i], dpuav_relative_positions[i][j][0][0:2])
+        for i in range(N_DPUAV, N_DPUAV + N_ETUAV):
+            self.private_state.append(np.array([]))
+            for j in range(self.private_state_dim // 2):
+                self.private_state[i] = np.append(self.private_state[i], etuav_relative_positions[i-N_DPUAV][j][0][0:2])
         # 返回的state
-        self.state = self.generate_obs(self.overall_state)
+        self.state = self.generate_obs(self.public_state, self.private_state)
 
         self.reward = [-target] * (N_DPUAV + N_ETUAV)
         # print(self.reward)
 
         self.done = False
 
-        # 画无人机的轨迹
-        plt.figure()
-        plt.plot([i.position.data[0][0] for i in self.UEs], [j.position.data[0][1] for j in self.UEs], '*')
-
-        for i in range(N_DPUAV):
-            DPUAV_tail = self.DPUAVs[i].get_tail()
-            plt.plot(DPUAV_tail[0][:], DPUAV_tail[1][:], '-o')
-        plt.savefig('test/render.png', format='png')
-        plt.close()
+        # # 画无人机的轨迹
+        # plt.figure()
+        # plt.plot([i.position.data[0][0] for i in self.UEs], [j.position.data[0][1] for j in self.UEs], '*')
+        #
+        # for i in range(N_DPUAV):
+        #     DPUAV_tail = self.DPUAVs[i].get_tail()
+        #     plt.plot(DPUAV_tail[0][:], DPUAV_tail[1][:], '-o')
+        # plt.savefig('test/render.png', format='png')
+        # plt.close()
 
 
         return self.state, self.reward, self.done, ''
@@ -328,20 +330,16 @@ class Area:
         """生成指定数量DPUAV，返回一个list"""
         return [DPUAV(self.generate_single_DPUAV_position()) for _ in range(num)]
 
-    def generate_obs(self, overall_state):
+    def generate_obs(self, public_state, private_state):
         """输入总观测值，返回每个用户观测值的list"""
-        s = []
+        s = [public_state for _ in range(self.agent_num)]
         for ax in range(self.agent_num):
-            single_state = np.concatenate((overall_state[0:self.public_state_dim],
-                                           overall_state[self.public_state_dim + ax * self.private_state_dim:
-                                                         self.public_state_dim + (
-                                                                     ax + 1) * self.private_state_dim]),
-                                          axis=0)
-            s.append(single_state)
+            s[ax] = np.append(s[ax], private_state[ax])
         return s
 
 
 if __name__ == "__main__":
     area = Area()
+    # area.step([np.array([0, 0.1]), np.array([0.2, 0.3]), np.array([0.4, 0.5]), np.array([0.6, 0.7])])
     print(area.step([np.array([0,0.1]),np.array([0.2,0.3]),np.array([0.4,0.5]),np.array([0.6,0.7])]))
 
