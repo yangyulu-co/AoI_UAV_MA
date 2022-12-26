@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import os
 from maddpg.maddpg import MADDPG
+from common.utils import to_tensor_var
 
 
 class Agent:
@@ -14,7 +15,8 @@ class Agent:
         if np.random.uniform() < epsilon:
             u = np.random.uniform(-self.args.high_action, self.args.high_action, self.args.action_shape[self.agent_id])
         else:
-            inputs = torch.tensor(o, dtype=torch.float32).unsqueeze(0)
+            # inputs = torch.tensor(o, dtype=torch.float32).unsqueeze(0)
+            inputs = to_tensor_var(o, self.policy.use_cuda, dtype='float').unsqueeze(0)
             pi = self.policy.actor_network(inputs).squeeze(0)
             # print('{} : {}'.format(self.name, pi))
             u = pi.cpu().numpy()

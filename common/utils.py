@@ -1,6 +1,8 @@
 import numpy as np
 import inspect
 import functools
+import torch
+from torch.autograd import Variable
 
 
 def store_args(method):
@@ -47,3 +49,20 @@ def make_env(args):
     args.low_action = -1
 
     return env, args
+
+def to_tensor_var(x, use_cuda=True, dtype="float"):
+    FloatTensor = torch.cuda.FloatTensor if use_cuda else torch.FloatTensor
+    LongTensor = torch.cuda.LongTensor if use_cuda else torch.LongTensor
+    ByteTensor = torch.cuda.ByteTensor if use_cuda else torch.ByteTensor
+    if dtype == "float":
+        x = np.array(x, dtype=np.float32).tolist()
+        return Variable(FloatTensor(x))
+    elif dtype == "long":
+        x = np.array(x, dtype=np.longlong).tolist()
+        return Variable(LongTensor(x))
+    elif dtype == "byte":
+        x = np.array(x, dtype=np.byte).tolist()
+        return Variable(ByteTensor(x))
+    else:
+        x = np.array(x, dtype=np.float32).tolist()
+        return Variable(FloatTensor(x))

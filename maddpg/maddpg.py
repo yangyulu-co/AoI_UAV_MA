@@ -2,6 +2,7 @@ import torch
 import os
 from maddpg.actor_critic import Actor, Critic
 import numpy as np
+from common.utils import to_tensor_var
 
 
 class MADDPG:
@@ -9,6 +10,7 @@ class MADDPG:
         self.args = args
         self.agent_id = agent_id
         self.train_step = 0
+        self.use_cuda = args.use_cuda and torch.cuda.is_available()
 
         # create the network
         self.actor_network = Actor(args, agent_id)
@@ -25,6 +27,13 @@ class MADDPG:
         # create the optimizer
         self.actor_optim = torch.optim.Adam(self.actor_network.parameters(), lr=self.args.lr_actor)
         self.critic_optim = torch.optim.Adam(self.critic_network.parameters(), lr=self.args.lr_critic)
+
+        # use cuda
+        if self.use_cuda:
+            self.actor_network.cuda()
+            self.critic_network.cuda()
+            self.actor_target_network.cuda()
+            self.critic_target_network.cuda()
 
         # create the dict for store the model
         if not os.path.exists(self.args.save_dir):
@@ -59,7 +68,11 @@ class MADDPG:
     # update the network
     def train(self, transitions, other_agents):
         for key in transitions.keys():
-            transitions[key] = torch.tensor(transitions[key], dtype=torch.float32)
+            if self.use_cuda:
+                transitions[key] = torch.tensor(transitions[key], dtype=torch.float32, device='cuda')
+                # transitions[key] = to_tensor_var(transitions[key], self.use_cuda, 'float')
+            else:
+                transitions[key] = torch.tensor(transitions[key], dtype=torch.float32, device='cpu')
         r = transitions['r_%d' % self.agent_id]  # 训练时只需要自己的reward
         o, u, o_next = [], [], []  # 用来装每个agent经验中的各项
         for agent_id in range(self.args.n_agents):
@@ -81,14 +94,14 @@ class MADDPG:
                     u_next.append(other_agents[index].policy.actor_target_network(o_next[agent_id]))
                     index += 1
             # 得到去重后的环境
-            overall_state_next = self.generate_overall_state(o_next)
+            overall_state_next = self.generate_overall_state(o_next, self.use_cuda)
 
             # 估计next_q
             q_next = self.critic_target_network(overall_state_next, u_next).detach()
             target_q = (r.unsqueeze(1) + self.args.gamma * q_next).detach()
 
         # the q loss
-        overall_state = self.generate_overall_state(o)
+        overall_state = self.generate_overall_state(o, self.use_cuda)
         q_value = self.critic_network(overall_state, u)
         critic_loss = (target_q - q_value).pow(2).mean()
 
@@ -122,18 +135,33 @@ class MADDPG:
         torch.save(self.actor_network.state_dict(), model_path + '/' + 'actor_params.pkl')
         torch.save(self.critic_network.state_dict(),  model_path + '/' + 'critic_params.pkl')
 
-    def generate_overall_state(self, state):
+    def generate_overall_state(self, state, use_cuda=True):
         # 这里state有agent_num个索引，每个索引中是batch_size条记录，每条是该agent的观测值
         # 需要处理成size条，每条由overall_state组成
         # 输入每个智能体的观测值组成的列表，生成一个总的观测值（实现去重的工作）
-        overall_state = np.empty([self.args.batch_size, self.args.overall_obs_shape])
-        if state:
-            temp = np.empty([self.args.batch_size, self.args.overall_obs_shape - self.args.public_obs_shape])
-            for i in range(self.args.batch_size):
-                overall_state[i][:self.args.public_obs_shape] = state[0][i][:self.args.public_obs_shape]
-                for j in range(self.args.n_agents):
-                    temp[i][j*self.args.private_obs_shape:(j+1)*self.args.private_obs_shape] = \
-                        state[j][i][self.args.public_obs_shape:]
-                overall_state[i][self.args.public_obs_shape:] = temp[i][:]
+        if use_cuda:
+            overall_state = torch.empty([self.args.batch_size, self.args.overall_obs_shape], dtype=torch.float32, device='cuda')
+            if state:
+                temp = torch.empty([self.args.batch_size, self.args.overall_obs_shape - self.args.public_obs_shape], dtype=torch.float32, device='cuda')
+                for i in range(self.args.batch_size):
+                    overall_state[i][:self.args.public_obs_shape] = state[0][i][:self.args.public_obs_shape]
+                    for j in range(self.args.n_agents):
+                        temp[i][j * self.args.private_obs_shape:(j + 1) * self.args.private_obs_shape] = \
+                            state[j][i][self.args.public_obs_shape:]
+                    overall_state[i][self.args.public_obs_shape:] = temp[i][:]
 
-        return torch.tensor(overall_state, dtype=torch.float32)
+            return overall_state
+
+        else:
+            overall_state = np.empty([self.args.batch_size, self.args.overall_obs_shape])
+            if state:
+                temp = np.empty([self.args.batch_size, self.args.overall_obs_shape - self.args.public_obs_shape])
+                for i in range(self.args.batch_size):
+                    overall_state[i][:self.args.public_obs_shape] = state[0][i][:self.args.public_obs_shape]
+                    for j in range(self.args.n_agents):
+                        temp[i][j*self.args.private_obs_shape:(j+1)*self.args.private_obs_shape] = \
+                            state[j][i][self.args.public_obs_shape:]
+                    overall_state[i][self.args.public_obs_shape:] = temp[i][:]
+
+            return torch.tensor(overall_state, dtype=torch.float32)
+

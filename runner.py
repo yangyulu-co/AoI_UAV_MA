@@ -44,6 +44,7 @@ class Runner:
                     u.append(action)
                     actions.append(action)
             s_next, r, done, info = self.env.step(actions)
+
             self.buffer.store_episode(s[:self.args.n_agents], u, r[:self.args.n_agents], s_next[:self.args.n_agents])
             s = s_next
             if self.buffer.current_size >= self.args.batch_size:
@@ -79,6 +80,7 @@ class Runner:
                     for agent_id, agent in enumerate(self.agents):
                         action = agent.select_action(s[agent_id], 0, 0)
                         actions.append(action)
+                # print(actions)
                 s_next, r, done, info = self.env.step(actions)
                 rewards += r[0]
                 s = s_next

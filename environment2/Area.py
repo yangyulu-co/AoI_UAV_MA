@@ -3,6 +3,7 @@ from collections import defaultdict
 from copy import copy
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 from environment2.Constant import N_user, N_ETUAV, N_DPUAV, eta_1, eta_2, eta_3,DPUAV_height,ETUAV_height
 from environment2.DPUAV import DPUAV, max_compute
@@ -187,7 +188,7 @@ class Area:
         # 公共的环境信息
         self.public_state = np.concatenate((np.array(dpuav_aoi), np.array(ue_probability), np.array(ue_if_task)), axis=0)
         # 私有的环境信息(只取水平距离)
-        temp = [x[0][0:2] for y in dpuav_relative_positions for x in y] + [x[0][0:2] for y in dpuav_relative_positions for x in y]
+        temp = [x[0][0:2] for y in dpuav_relative_positions for x in y] + [x[0][0:2] for y in etuav_relative_positions for x in y]
         self.private_state = np.stack(temp, axis=0)
         self.private_state = self.private_state.reshape(1, -1)[0]
         # print(self.private_state)
@@ -196,8 +197,20 @@ class Area:
         self.state = self.generate_obs(self.overall_state)
 
         self.reward = [-target] * (N_DPUAV + N_ETUAV)
+        # print(self.reward)
 
         self.done = False
+
+        # 画无人机的轨迹
+        plt.figure()
+        plt.plot([i.position.data[0][0] for i in self.UEs], [j.position.data[0][1] for j in self.UEs], '*')
+
+        for i in range(N_DPUAV):
+            DPUAV_tail = self.DPUAVs[i].get_tail()
+            plt.plot(DPUAV_tail[0][:], DPUAV_tail[1][:], '-o')
+        plt.savefig('test/render.png', format='png')
+        plt.close()
+
 
         return self.state, self.reward, self.done, ''
 
