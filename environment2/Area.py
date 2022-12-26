@@ -4,7 +4,7 @@ from copy import copy
 
 import numpy as np
 
-from environment2.Constant import N_user, N_ETUAV, N_DPUAV, eta_1, eta_2, eta_3,DPUAV_height,ETUAV_height
+from environment2.Constant import N_user, N_ETUAV, N_DPUAV, eta_1, eta_2, eta_3, DPUAV_height, ETUAV_height, time_slice
 from environment2.DPUAV import DPUAV, max_compute
 from environment2.ETUAV import ETUAV
 from environment2.Position import Position
@@ -150,7 +150,7 @@ class Area:
         sum_etuav_energy = sum(etuav_move_energy)
         """ETUAV总的能耗"""
         offload_energy = [0.0 for _ in range(N_user)]
-        offload_aoi = [self.aoi[i] + 1 for i in range(N_user)]
+        offload_aoi = [self.aoi[i] + time_slice for i in range(N_user)]
         for dpuav_index, ue_index, choice in offload_choice:
             # 计算能量和aoi
             energy, aoi = self.calcul_single_dpuav_single_ue_energy_aoi(dpuav_index, ue_index, choice)
@@ -187,7 +187,7 @@ class Area:
         # 公共的环境信息
         self.public_state = np.concatenate((np.array(dpuav_aoi), np.array(ue_probability), np.array(ue_if_task)), axis=0)
         # 私有的环境信息(只取水平距离)
-        temp = [x[0][0:2] for y in dpuav_relative_positions for x in y] + [x[0][0:2] for y in dpuav_relative_positions for x in y]
+        temp = [x[0][0:2] for y in dpuav_relative_positions for x in y] + [x[0][0:2] for y in etuav_relative_positions for x in y]
         self.private_state = np.stack(temp, axis=0)
         self.private_state = self.private_state.reshape(1, -1)[0]
         # print(self.private_state)
@@ -316,7 +316,7 @@ class Area:
         return [DPUAV(self.generate_single_DPUAV_position()) for _ in range(num)]
 
     def generate_obs(self, overall_state):
-        # 输入总观测值，返回每个用户观测值的list
+        """输入总观测值，返回每个用户观测值的list"""
         s = []
         for ax in range(self.agent_num):
             single_state = np.concatenate((overall_state[0:self.public_state_dim],
