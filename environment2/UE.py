@@ -50,9 +50,9 @@ class UE:
         """与DPUAV的距离"""
         return self.position.distance(dpuav.position)
 
-    def if_link_DPUAV(self, uav: DPUAV) -> bool:
-        """是否与UAV相连"""
-        return self.position.if_connect(uav.position, uav.link_range)
+    def if_link_DPUAV(self, dpuav: DPUAV) -> bool:
+        """是否与DPUAV相连"""
+        return self.position.if_connect(dpuav.position, dpuav.link_range)
 
     # 移动相关函数
     # def move_by_radian(self, radian: float, distance: float):

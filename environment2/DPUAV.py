@@ -27,7 +27,7 @@ class DPUAV(UAV):
         self.computing_capacity = 5 * (10 ** 7)
         """DPUAV的计算能力，单位为cpu cycle/s"""
 
-        self.link_range = 100.0
+        self.link_range = 172
         """DPUAV和UE之间连接距离的限制，在此范围内才可以连接,单位为m"""
 
         self.rate_BS = 4 * (10 ** (6))
