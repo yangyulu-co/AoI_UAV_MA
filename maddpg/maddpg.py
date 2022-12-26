@@ -45,6 +45,8 @@ class MADDPG:
                                                                           self.model_path + '/actor_params.pkl'))
             print('Agent {} successfully loaded critic_network: {}'.format(self.agent_id,
                                                                            self.model_path + '/critic_params.pkl'))
+        # else:
+        #     print('not found')
 
     # soft update
     def _soft_update_target_network(self):
@@ -117,8 +119,8 @@ class MADDPG:
         model_path = os.path.join(model_path, 'agent_%d' % self.agent_id)
         if not os.path.exists(model_path):
             os.makedirs(model_path)
-        torch.save(self.actor_network.state_dict(), model_path + '/' + num + '_actor_params.pkl')
-        torch.save(self.critic_network.state_dict(),  model_path + '/' + num + '_critic_params.pkl')
+        torch.save(self.actor_network.state_dict(), model_path + '/' + 'actor_params.pkl')
+        torch.save(self.critic_network.state_dict(),  model_path + '/' + 'critic_params.pkl')
 
     def generate_overall_state(self, state):
         # 这里state有agent_num个索引，每个索引中是batch_size条记录，每条是该agent的观测值
