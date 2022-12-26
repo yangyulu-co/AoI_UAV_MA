@@ -88,20 +88,7 @@ class Area:
         self.aoi = [0.0 for _ in range(N_user)]
         """UE的aoi"""
 
-        # 公共的环境信息
-        # 所有用户的AOI
-        new_aoi = copy(self.aoi)
-        # 得到UE生成数据的速率
-        ue_probability = [ue.get_lambda() for ue in self.UEs]
-        # 得到UE是否有数据
-        ue_if_task = [0 if ue.task is None else 1 for ue in self.UEs]
-        public_state = np.array(new_aoi + ue_probability + ue_if_task)
-
-        state = [None for _ in range(N_DPUAV + N_ETUAV)]
-        for i in range(N_DPUAV):
-            state[i] = np.append(public_state, self.calcul_relative_horizontal_positions("dpuav", i))
-        for i in range(N_ETUAV):
-            state[i + N_DPUAV] = np.append(public_state, self.calcul_relative_horizontal_positions("etuav", i))
+        state = self.calcul_state()
         return state
 
     def step(self, actions):  # action是每个agent动作向量(ndarray[0-2pi, 0-1])的列表，DP在前ET在后
@@ -147,19 +134,7 @@ class Area:
         """目标函数值"""
         self.aoi = offload_aoi  # 更新AOI
 
-        # 公共的环境信息
-        # 所有用户的AOI
-        dpuav_aoi = copy(self.aoi)
-        # 得到UE生成数据的速率
-        ue_probability = [ue.get_lambda() for ue in self.UEs]
-        # 得到UE是否有数据
-        ue_if_task = [0 if ue.task is None else 1 for ue in self.UEs]
-        public_state = np.array(dpuav_aoi + ue_probability + ue_if_task)
-        state = [None for _ in range(N_DPUAV + N_ETUAV)]
-        for i in range(N_DPUAV):
-            state[i] = np.append(public_state, self.calcul_relative_horizontal_positions("dpuav", i))
-        for i in range(N_ETUAV):
-            state[i + N_DPUAV] = np.append(public_state, self.calcul_relative_horizontal_positions("etuav", i))
+        state = self.calcul_state()
 
         reward = [-target] * (N_DPUAV + N_ETUAV)
         done = False
@@ -175,6 +150,25 @@ class Area:
         # plt.close()
 
         return state, reward, done, ''
+
+    def calcul_state(self):
+        """计算所有UAV的状态信息，以[narray]格式返回"""
+        # 公共的环境信息
+        # 所有用户的AOI
+        dpuav_aoi = copy(self.aoi)
+        # 得到UE生成数据的速率
+        ue_probability = [ue.get_lambda() for ue in self.UEs]
+        # 得到UE是否有数据
+        ue_if_task = [0 if ue.task is None else 1 for ue in self.UEs]
+        public_state = np.array(dpuav_aoi + ue_probability + ue_if_task)
+
+        state = [None for _ in range(N_DPUAV + N_ETUAV)]
+        for i in range(N_DPUAV):
+            state[i] = np.append(public_state, self.calcul_relative_horizontal_positions("dpuav", i))
+        for i in range(N_ETUAV):
+            state[i + N_DPUAV] = np.append(public_state, self.calcul_relative_horizontal_positions("etuav", i))
+        return state
+
 
     def calcul_relative_positions(self, type: str, index: int):
         """计算DPUAV或者ETUAV与除自生外所有的UE,ETUAV,DPUAV的相对位置,弃用"""
