@@ -110,13 +110,18 @@ class Area:
             etuav_relative_positions[i] = self.calcul_relative_positions('etuav', i)
         temp = [x[0][0:2] for y in dpuav_relative_positions for x in y] + [x[0][0:2] for y in dpuav_relative_positions
                                                                            for x in y]
-        self.private_state = np.stack(temp, axis=0)
-        self.private_state = self.private_state.reshape(1, -1)[0]
-
-        # 总的state
-        self.overall_state = np.concatenate((self.public_state, self.private_state), axis=0)
+        self.private_state = []
+        for i in range(N_DPUAV):
+            self.private_state.append(np.array([]))
+            for j in range(self.private_state_dim // 2):
+                self.private_state[i] = np.append(self.private_state[i], dpuav_relative_positions[i][j][0][0:2])
+        for i in range(N_DPUAV, N_DPUAV + N_ETUAV):
+            self.private_state.append(np.array([]))
+            for j in range(self.private_state_dim // 2):
+                self.private_state[i] = np.append(self.private_state[i],
+                                                  etuav_relative_positions[i - N_DPUAV][j][0][0:2])
         # 返回的state
-        self.state = self.generate_obs(self.overall_state)
+        self.state = self.generate_obs(self.public_state, self.private_state)
 
         return self.state
 
@@ -187,6 +192,7 @@ class Area:
         # 公共的环境信息
         self.public_state = np.concatenate((np.array(dpuav_aoi), np.array(ue_probability), np.array(ue_if_task)), axis=0)
         # 私有的环境信息(只取水平距离)
+        self.private_state = []
         for i in range(N_DPUAV):
             self.private_state.append(np.array([]))
             for j in range(self.private_state_dim // 2):
