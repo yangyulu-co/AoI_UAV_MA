@@ -60,11 +60,6 @@ class Area:
         self.overall_state_dim = 3 * N_user + (self.agent_num) * 2 * (N_user + self.agent_num - 1)
         self.public_state_dim = 3 * N_user  # 用户的AoI、lambda、队列状况是公有部分
         self.private_state_dim = 2 * (N_user + self.agent_num - 1)  # 与其他的位置关系是私有部分
-        self.public_state = np.array([])
-        self.private_state = []
-        self.state = np.array([])
-        self.reward = 0  # 奖励函数
-        self.done = False  # 当前episode是否结束
 
         self.limit = np.empty((2, 2), np.float32)
         self.limit[0, 0] = -x_range / 2
@@ -79,7 +74,6 @@ class Area:
         """所有ETUAV组成的列表"""
         self.DPUAVs = self.generate_DPUAVs(N_DPUAV)
         """所有DPUAV组成的列表"""
-
         self.aoi = [0.0 for _ in range(N_user)]
         """UE的aoi"""
 
@@ -94,37 +88,21 @@ class Area:
         self.aoi = [0.0 for _ in range(N_user)]
         """UE的aoi"""
 
-        # state的共有部分
-        dpuav_aoi = copy(self.aoi)
+        # 公共的环境信息
+        # 所有用户的AOI
+        new_aoi = copy(self.aoi)
+        # 得到UE生成数据的速率
         ue_probability = [ue.get_lambda() for ue in self.UEs]
+        # 得到UE是否有数据
         ue_if_task = [0 if ue.task is None else 1 for ue in self.UEs]
-        self.public_state = np.concatenate((np.array(dpuav_aoi), np.array(ue_probability), np.array(ue_if_task)),
-                                           axis=0)
+        public_state = np.array(new_aoi + ue_probability + ue_if_task)
 
-        # state的私有部分
-        dpuav_relative_positions = [None for _ in range(N_DPUAV)]
+        state = [None for _ in range(N_DPUAV + N_ETUAV)]
         for i in range(N_DPUAV):
-            dpuav_relative_positions[i] = self.calcul_relative_positions('dpuav', i)
-        etuav_relative_positions = [None for _ in range(N_ETUAV)]
+            state[i] = np.append(public_state, self.calcul_relative_horizontal_positions("dpuav", i))
         for i in range(N_ETUAV):
-            etuav_relative_positions[i] = self.calcul_relative_positions('etuav', i)
-        temp = [x[0][0:2] for y in dpuav_relative_positions for x in y] + [x[0][0:2] for y in dpuav_relative_positions
-                                                                           for x in y]
-        self.private_state = []
-        for i in range(N_DPUAV):
-            self.private_state.append(np.array([]))
-            for j in range(self.private_state_dim // 2):
-                self.private_state[i] = np.append(self.private_state[i], dpuav_relative_positions[i][j][0][0:2])
-        for i in range(N_DPUAV, N_DPUAV + N_ETUAV):
-            self.private_state.append(np.array([]))
-            for j in range(self.private_state_dim // 2):
-                self.private_state[i] = np.append(self.private_state[i],
-                                                  etuav_relative_positions[i - N_DPUAV][j][0][0:2])
-        # 返回的state
-        self.state = self.generate_obs(self.public_state, self.private_state)
-
-        return self.state
-
+            state[i + N_DPUAV] = np.append(public_state, self.calcul_relative_horizontal_positions("etuav", i))
+        return state
 
     def step(self, actions):  # action是每个agent动作向量(ndarray[0-2pi, 0-1])的列表，DP在前ET在后
         # UE产生数据
@@ -169,45 +147,22 @@ class Area:
         """目标函数值"""
         self.aoi = offload_aoi  # 更新AOI
 
-        ## 生成DPUAV的观测环境
-        # 得到相对位置(用户，DP，ET)
-        dpuav_relative_positions = [None for _ in range(N_DPUAV)]
-        for i in range(N_DPUAV):
-            dpuav_relative_positions[i] = self.calcul_relative_positions('dpuav', i)
+        # 公共的环境信息
         # 所有用户的AOI
         dpuav_aoi = copy(self.aoi)
         # 得到UE生成数据的速率
         ue_probability = [ue.get_lambda() for ue in self.UEs]
         # 得到UE是否有数据
         ue_if_task = [0 if ue.task is None else 1 for ue in self.UEs]
-
-        ## 生成ETUAV的观测环境
-        # 得到相对位置
-        etuav_relative_positions = [None for _ in range(N_ETUAV)]
-        for i in range(N_ETUAV):
-            etuav_relative_positions[i] = self.calcul_relative_positions('etuav', i)
-        ue_energy = [ue.energy for ue in self.UEs]  # 这个暂时不用
-
-        # 生成返回值
-        # 公共的环境信息
-        self.public_state = np.concatenate((np.array(dpuav_aoi), np.array(ue_probability), np.array(ue_if_task)), axis=0)
-        # 私有的环境信息(只取水平距离)
-        self.private_state = []
+        public_state = np.array(dpuav_aoi + ue_probability + ue_if_task)
+        state = [None for _ in range(N_DPUAV + N_ETUAV)]
         for i in range(N_DPUAV):
-            self.private_state.append(np.array([]))
-            for j in range(self.private_state_dim // 2):
-                self.private_state[i] = np.append(self.private_state[i], dpuav_relative_positions[i][j][0][0:2])
-        for i in range(N_DPUAV, N_DPUAV + N_ETUAV):
-            self.private_state.append(np.array([]))
-            for j in range(self.private_state_dim // 2):
-                self.private_state[i] = np.append(self.private_state[i], etuav_relative_positions[i-N_DPUAV][j][0][0:2])
-        # 返回的state
-        self.state = self.generate_obs(self.public_state, self.private_state)
+            state[i] = np.append(public_state, self.calcul_relative_horizontal_positions("dpuav", i))
+        for i in range(N_ETUAV):
+            state[i + N_DPUAV] = np.append(public_state, self.calcul_relative_horizontal_positions("etuav", i))
 
-        self.reward = [-target] * (N_DPUAV + N_ETUAV)
-        # print(self.reward)
-
-        self.done = False
+        reward = [-target] * (N_DPUAV + N_ETUAV)
+        done = False
 
         # # 画无人机的轨迹
         # plt.figure()
@@ -219,12 +174,10 @@ class Area:
         # plt.savefig('test/render.png', format='png')
         # plt.close()
 
-
-        return self.state, self.reward, self.done, ''
-
+        return state, reward, done, ''
 
     def calcul_relative_positions(self, type: str, index: int):
-        """计算DPUAV或者ETUAV与除自生外所有的UE,ETUAV,DPUAV的相对位置"""
+        """计算DPUAV或者ETUAV与除自生外所有的UE,ETUAV,DPUAV的相对位置,弃用"""
         relative_positions = []
         if type == 'etuav':
             center_position = self.ETUAVs[index].position
@@ -250,6 +203,37 @@ class Area:
                 if i != index:
                     rel_position = center_position.relative_position(dpuav.position)
                     relative_positions.append(rel_position)
+        else:
+            return False
+        return relative_positions
+
+    def calcul_relative_horizontal_positions(self, type: str, index: int):
+        """计算DPUAV或者ETUAV与除自生外所有的UE,ETUAV,DPUAV的相对水平位置"""
+        relative_positions = []
+        if type == 'etuav':
+            center_position = self.ETUAVs[index].position
+            for ue in self.UEs:
+                rel_position = center_position.relative_horizontal_position(ue.position)
+                relative_positions += rel_position
+            for i, etuav in enumerate(self.ETUAVs):
+                if i != index:
+                    rel_position = center_position.relative_horizontal_position(etuav.position)
+                    relative_positions += rel_position
+            for dpuav in self.DPUAVs:
+                rel_position = center_position.relative_horizontal_position(dpuav.position)
+                relative_positions += rel_position
+        elif type == 'dpuav':
+            center_position = self.DPUAVs[index].position
+            for ue in self.UEs:
+                rel_position = center_position.relative_horizontal_position(ue.position)
+                relative_positions += rel_position
+            for etuav in self.ETUAVs:
+                rel_position = center_position.relative_horizontal_position(etuav.position)
+                relative_positions += rel_position
+            for i, dpuav in enumerate(self.DPUAVs):
+                if i != index:
+                    rel_position = center_position.relative_horizontal_position(dpuav.position)
+                    relative_positions += rel_position
         else:
             return False
         return relative_positions
@@ -309,20 +293,20 @@ class Area:
         x = random.uniform(self.limit[0, 0], self.limit[1, 0])
         y = random.uniform(self.limit[0, 1], self.limit[1, 1])
         return Position(x, y, 0)
+
     def generate_single_ETUAV_position(self) -> Position:
         """随机生成一个ETUAV在区域里的点"""
 
         x = random.uniform(self.limit[0, 0], self.limit[1, 0])
         y = random.uniform(self.limit[0, 1], self.limit[1, 1])
         return Position(x, y, ETUAV_height)
+
     def generate_single_DPUAV_position(self) -> Position:
         """随机生成一个DPUAV在区域里的点"""
 
         x = random.uniform(self.limit[0, 0], self.limit[1, 0])
         y = random.uniform(self.limit[0, 1], self.limit[1, 1])
         return Position(x, y, DPUAV_height)
-
-
 
     def generate_UEs(self, num: int) -> [UE]:
         """生成指定数量的UE，返回一个list"""
@@ -336,16 +320,8 @@ class Area:
         """生成指定数量DPUAV，返回一个list"""
         return [DPUAV(self.generate_single_DPUAV_position()) for _ in range(num)]
 
-    def generate_obs(self, public_state, private_state):
-        """输入总观测值，返回每个用户观测值的list"""
-        s = [public_state for _ in range(self.agent_num)]
-        for ax in range(self.agent_num):
-            s[ax] = np.append(s[ax], private_state[ax])
-        return s
-
 
 if __name__ == "__main__":
     area = Area()
     # area.step([np.array([0, 0.1]), np.array([0.2, 0.3]), np.array([0.4, 0.5]), np.array([0.6, 0.7])])
-    print(area.step([np.array([0,0.1]),np.array([0.2,0.3]),np.array([0.4,0.5]),np.array([0.6,0.7])]))
-
+    print(area.step([np.array([0, 0.1]), np.array([0.2, 0.3]), np.array([0.4, 0.5]), np.array([0.6, 0.7])]))

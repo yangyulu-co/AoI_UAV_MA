@@ -15,8 +15,12 @@ class Position:
         self.tail = self.data.copy()
         """历史位置组成的数组，尺寸为n*3"""
 
-    def relative_position(self, other_position:'Position'):
+    def relative_position(self, other_position: 'Position'):
         return self.data - other_position.data
+
+    def relative_horizontal_position(self, other_position: 'Position'):
+        """返回list格式的水平相对位置"""
+        return [self.data[0, 0] - other_position.data[0, 0], self.data[0, 1] - other_position.data[0, 1]]
 
     def distance(self, other_position: 'Position') -> float:
         """两个位置之间的距离"""
