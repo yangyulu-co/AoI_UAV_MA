@@ -55,13 +55,14 @@ class Area:
 
     def __init__(self, x_range=500.0, y_range=500.0):
 
-        self.agent_num = N_ETUAV + N_DPUAV
+        self.agent_num = N_ETUAV
         self.action_dim = 2  # 角度和rate
-        self.overall_state_dim = 3 * N_user + (self.agent_num) * 2 * (N_user + self.agent_num - 1)
+        self.overall_state_dim = 3 * N_user + self.agent_num * 2 * (N_user + self.agent_num - 1)
         self.public_state_dim = 3 * N_user  # 用户的AoI、lambda、队列状况是公有部分
         self.private_state_dim = 2 * (N_user + self.agent_num - 1)  # 与其他的位置关系是私有部分
 
         self.limit = np.empty((2, 2), np.float32)
+        """场地限制"""
         self.limit[0, 0] = -x_range / 2
         self.limit[1, 0] = x_range / 2
         self.limit[0, 1] = -y_range / 2
@@ -72,8 +73,7 @@ class Area:
         """所有ue组成的列表"""
         self.ETUAVs = self.generate_ETUAVs(N_ETUAV)
         """所有ETUAV组成的列表"""
-        self.DPUAVs = self.generate_DPUAVs(N_DPUAV)
-        """所有DPUAV组成的列表"""
+
         self.aoi = [0.0 for _ in range(N_user)]
         """UE的aoi"""
 
@@ -83,12 +83,11 @@ class Area:
         """所有ue组成的列表"""
         self.ETUAVs = self.generate_ETUAVs(N_ETUAV)
         """所有ETUAV组成的列表"""
-        self.DPUAVs = self.generate_DPUAVs(N_DPUAV)
-        """所有DPUAV组成的列表"""
+
         self.aoi = [0.0 for _ in range(N_user)]
         """UE的aoi"""
 
-        state = self.calcul_state()
+        state = self.calcul_etuav_state()
         return state
 
     def step(self, actions):  # action是每个agent动作向量(ndarray[0-2pi, 0-1])的列表，DP在前ET在后
@@ -100,106 +99,57 @@ class Area:
         for etuav in self.ETUAVs:
             etuav.charge_all_ues(self.UEs)
 
-        # 由强化学习控制，UAV开始运动
+        # 由强化学习控制，ETUAV开始运动
         etuav_move_energy = [0.0 for _ in range(N_ETUAV)]
         """ETUAV运动的能耗"""
         for i, etuav in enumerate(self.ETUAVs):
-            etuav_move_energy[i] = etuav.move_by_radian_rate_2(actions[N_DPUAV + i][0], actions[N_DPUAV + i][1])
-        dpuav_move_energy = [0.0 for _ in range(N_DPUAV)]
-        """DPUAV运动的能耗"""
-        for i, dpuav in enumerate(self.DPUAVs):
-            dpuav_move_energy[i] = dpuav.move_by_radian_rate_2(actions[i][0], actions[i][1])
+            etuav_move_energy[i] = etuav.move_by_radian_rate_2(actions[i][0], actions[i][1])
+        # 计算状态
+        state = self.calcul_etuav_state()
 
-        # 计算连接情况
-        link_dict = get_link_dict(self.UEs, self.DPUAVs)
-
-        # 使用穷举方法，决定UAV的卸载决策
-        offload_choice = self.find_best_offload(link_dict)
-        sum_dpuav_energy = sum(dpuav_move_energy)
-        """DPUAV总的能耗"""
-        sum_etuav_energy = sum(etuav_move_energy)
-        """ETUAV总的能耗"""
-        offload_energy = [0.0 for _ in range(N_user)]
-        offload_aoi = [self.aoi[i] + time_slice for i in range(N_user)]
-        for dpuav_index, ue_index, choice in offload_choice:
-            # 计算能量和aoi
-            energy, aoi = self.calcul_single_dpuav_single_ue_energy_aoi(dpuav_index, ue_index, choice)
-            offload_energy[ue_index] = energy
-            offload_aoi[ue_index] = aoi
-            # 卸载任务
-            self.UEs[ue_index].offload_task()
-        sum_dpuav_energy += sum(offload_energy)
-        sum_aoi = sum(offload_aoi)
-        target = eta_1 * sum_aoi + eta_2 * sum_dpuav_energy + eta_3 * sum_etuav_energy
-        """目标函数值"""
-        self.aoi = offload_aoi  # 更新AOI
-
-        state = self.calcul_state()
-
-        reward = [-target] * (N_DPUAV + N_ETUAV)
+        # 计算目标函数
+        target = self.calcul_etuav_target()
+        reward = [-target] * N_ETUAV
         done = False
-
-        # # 画无人机的轨迹
-        # plt.figure()
-        # plt.plot([i.position.data[0][0] for i in self.UEs], [j.position.data[0][1] for j in self.UEs], '*')
-        #
-        # for i in range(N_DPUAV):
-        #     DPUAV_tail = self.DPUAVs[i].get_tail()
-        #     plt.plot(DPUAV_tail[0][:], DPUAV_tail[1][:], '-o')
-        # plt.savefig('test/render.png', format='png')
-        # plt.close()
 
         return state, reward, done, ''
 
-    def calcul_state(self):
-        """计算所有UAV的状态信息，以[narray]格式返回"""
-        # 公共的环境信息
-        # 所有用户的AOI
-        dpuav_aoi = copy(self.aoi)
-        # 得到UE生成数据的速率
-        ue_probability = [ue.get_lambda() for ue in self.UEs]
-        # 得到UE是否有数据
-        ue_if_task = [0 if ue.task is None else 1 for ue in self.UEs]
-        public_state = np.array(dpuav_aoi + ue_probability + ue_if_task)
+    # def calcul_state(self):
+    #     """计算所有UAV的状态信息，以[narray]格式返回"""
+    #     # 公共的环境信息
+    #     # 所有用户的AOI
+    #     dpuav_aoi = copy(self.aoi)
+    #     # 得到UE生成数据的速率
+    #     ue_probability = [ue.get_lambda() for ue in self.UEs]
+    #     # 得到UE是否有数据
+    #     ue_if_task = [0 if ue.task is None else 1 for ue in self.UEs]
+    #     public_state = np.array(dpuav_aoi + ue_probability + ue_if_task)
+    #
+    #     state = [None for _ in range(N_DPUAV + N_ETUAV)]
+    #     for i in range(N_DPUAV):
+    #         state[i] = np.append(public_state, self.calcul_relative_horizontal_positions("dpuav", i))
+    #     for i in range(N_ETUAV):
+    #         state[i + N_DPUAV] = np.append(public_state, self.calcul_relative_horizontal_positions("etuav", i))
+    #     return state
 
-        state = [None for _ in range(N_DPUAV + N_ETUAV)]
-        for i in range(N_DPUAV):
-            state[i] = np.append(public_state, self.calcul_relative_horizontal_positions("dpuav", i))
+    def calcul_etuav_target(self)->float:
+        """计算etuav的目标函数值"""
+        sum_energy = sum([ue.get_energy() for ue in self.UEs]) / N_user
+        """用户平均电量"""
+        punish = sum([ue.get_energy_state() for ue in self.UEs])
+        """低电量惩罚"""
+        weight = 2 * (10 ** (-6))
+        """低电量惩罚权重"""
+        return sum_energy - punish * weight
+
+
+    def calcul_etuav_state(self):
+        """计算所有etuav的状态信息，包含电量和相对位置"""
+        ue_energy = [ue.get_energy() for ue in self.UEs]
+        state = [None for _ in range(N_ETUAV)]
         for i in range(N_ETUAV):
-            state[i + N_DPUAV] = np.append(public_state, self.calcul_relative_horizontal_positions("etuav", i))
+            state[i] = np.array(ue_energy + self.calcul_relative_horizontal_positions('etuav', i))
         return state
-
-
-    def calcul_relative_positions(self, type: str, index: int):
-        """计算DPUAV或者ETUAV与除自生外所有的UE,ETUAV,DPUAV的相对位置,弃用"""
-        relative_positions = []
-        if type == 'etuav':
-            center_position = self.ETUAVs[index].position
-            for ue in self.UEs:
-                rel_position = center_position.relative_position(ue.position)
-                relative_positions.append(rel_position)
-            for i, etuav in enumerate(self.ETUAVs):
-                if i != index:
-                    rel_position = center_position.relative_position(etuav.position)
-                    relative_positions.append(rel_position)
-            for dpuav in self.DPUAVs:
-                rel_position = center_position.relative_position(dpuav.position)
-                relative_positions.append(rel_position)
-        elif type == 'dpuav':
-            center_position = self.DPUAVs[index].position
-            for ue in self.UEs:
-                rel_position = center_position.relative_position(ue.position)
-                relative_positions.append(rel_position)
-            for etuav in self.ETUAVs:
-                rel_position = center_position.relative_position(etuav.position)
-                relative_positions.append(rel_position)
-            for i, dpuav in enumerate(self.DPUAVs):
-                if i != index:
-                    rel_position = center_position.relative_position(dpuav.position)
-                    relative_positions.append(rel_position)
-        else:
-            return False
-        return relative_positions
 
     def calcul_relative_horizontal_positions(self, type: str, index: int):
         """计算DPUAV或者ETUAV与除自生外所有的UE,ETUAV,DPUAV的相对水平位置"""
@@ -213,33 +163,22 @@ class Area:
                 if i != index:
                     rel_position = center_position.relative_horizontal_position(etuav.position)
                     relative_positions += rel_position
-            for dpuav in self.DPUAVs:
-                rel_position = center_position.relative_horizontal_position(dpuav.position)
-                relative_positions += rel_position
-        elif type == 'dpuav':
-            center_position = self.DPUAVs[index].position
-            for ue in self.UEs:
-                rel_position = center_position.relative_horizontal_position(ue.position)
-                relative_positions += rel_position
-            for etuav in self.ETUAVs:
-                rel_position = center_position.relative_horizontal_position(etuav.position)
-                relative_positions += rel_position
-            for i, dpuav in enumerate(self.DPUAVs):
-                if i != index:
-                    rel_position = center_position.relative_horizontal_position(dpuav.position)
-                    relative_positions += rel_position
+            # for dpuav in self.DPUAVs:
+            #     rel_position = center_position.relative_horizontal_position(dpuav.position)
+            #     relative_positions += rel_position
+
         else:
             return False
         return relative_positions
 
-    def calcul_single_dpuav_single_ue_energy_aoi(self, dpuav_index: int, ue_index: int, offload_choice):
-        """计算单个dpuav单个ue的卸载决策下的能量消耗和aoi"""
-        energy = self.DPUAVs[dpuav_index].calcul_single_compute_and_offloading_energy(self.UEs[ue_index],
-                                                                                      offload_choice)
-        aoi = self.DPUAVs[dpuav_index].calcul_single_compute_and_offloading_aoi(self.UEs[ue_index], offload_choice)
-        if aoi is None:
-            aoi = self.aoi[ue_index] + 1
-        return energy, aoi
+    # def calcul_single_dpuav_single_ue_energy_aoi(self, dpuav_index: int, ue_index: int, offload_choice):
+    #     """计算单个dpuav单个ue的卸载决策下的能量消耗和aoi"""
+    #     energy = self.DPUAVs[dpuav_index].calcul_single_compute_and_offloading_energy(self.UEs[ue_index],
+    #                                                                                   offload_choice)
+    #     aoi = self.DPUAVs[dpuav_index].calcul_single_compute_and_offloading_aoi(self.UEs[ue_index], offload_choice)
+    #     if aoi is None:
+    #         aoi = self.aoi[ue_index] + 1
+    #     return energy, aoi
 
     def find_single_dpuav_best_offload(self, dpuav_index: int, ue_index_list: list):
         """穷举查找单个DPUAV下多个用户的最优卸载决策,返回数据格式为[dpuav_index,ue_index,{0,1,2}]组成的list"""

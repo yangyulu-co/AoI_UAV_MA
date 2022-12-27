@@ -88,6 +88,14 @@ class UE:
             return True
         return False
 
+    def get_energy(self):
+        """返回当前电量"""
+        return self.energy
+
+    def get_energy_state(self):
+        """返回电量状态"""
+        return self.energy_state
+
     # 传输相关函数
     def get_transmission_rate_with_UAV(self, uav: DPUAV) -> float:
         """DPUAV和UE之间实际的传输速率,单位为bit/s"""
