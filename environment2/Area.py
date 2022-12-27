@@ -57,8 +57,8 @@ class Area:
 
         self.agent_num = N_ETUAV
         self.action_dim = 2  # 角度和rate
-        self.overall_state_dim = 3 * N_user + self.agent_num * 2 * (N_user + self.agent_num - 1)
-        self.public_state_dim = 3 * N_user  # 用户的AoI、lambda、队列状况是公有部分
+        self.overall_state_dim = N_user + self.agent_num * 2 * (N_user + self.agent_num - 1)
+        self.public_state_dim = N_user  # 用户的AoI、lambda、队列状况是公有部分
         self.private_state_dim = 2 * (N_user + self.agent_num - 1)  # 与其他的位置关系是私有部分
 
         self.limit = np.empty((2, 2), np.float32)
