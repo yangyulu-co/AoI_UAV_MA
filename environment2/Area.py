@@ -55,7 +55,7 @@ class Area:
 
     def __init__(self, x_range=500.0, y_range=500.0):
 
-        self.agent_num = N_ETUAV + N_DPUAV
+        self.agent_num = N_DPUAV
         self.action_dim = 2  # 角度和rate
         self.overall_state_dim = 3 * N_user + (self.agent_num) * 2 * (N_user + self.agent_num - 1)
         self.public_state_dim = 3 * N_user  # 用户的AoI、lambda、队列状况是公有部分
@@ -70,19 +70,17 @@ class Area:
         # 生成ue,etuav,dpuav
         self.UEs = self.generate_UEs(N_user)
         """所有ue组成的列表"""
-        self.ETUAVs = self.generate_ETUAVs(N_ETUAV)
-        """所有ETUAV组成的列表"""
+
         self.DPUAVs = self.generate_DPUAVs(N_DPUAV)
         """所有DPUAV组成的列表"""
         self.aoi = [0.0 for _ in range(N_user)]
         """UE的aoi"""
 
     def reset(self):
-        # 生成ue,etuav,dpuav
+        # 生成ue,dpuav
         self.UEs = self.generate_UEs(N_user)
         """所有ue组成的列表"""
-        self.ETUAVs = self.generate_ETUAVs(N_ETUAV)
-        """所有ETUAV组成的列表"""
+
         self.DPUAVs = self.generate_DPUAVs(N_DPUAV)
         """所有DPUAV组成的列表"""
         self.aoi = [0.0 for _ in range(N_user)]
@@ -92,19 +90,14 @@ class Area:
         return state
 
     def step(self, actions):  # action是每个agent动作向量(ndarray[0-2pi, 0-1])的列表，DP在前ET在后
-        # UE产生数据
+        # UE产生数据并冲满电
         for ue in self.UEs:
             ue.generate_task()
+            ue.charge(1.0)
 
-        # ETUAV充电
-        for etuav in self.ETUAVs:
-            etuav.charge_all_ues(self.UEs)
+
 
         # 由强化学习控制，UAV开始运动
-        etuav_move_energy = [0.0 for _ in range(N_ETUAV)]
-        """ETUAV运动的能耗"""
-        for i, etuav in enumerate(self.ETUAVs):
-            etuav_move_energy[i] = etuav.move_by_radian_rate_2(actions[N_DPUAV + i][0], actions[N_DPUAV + i][1])
         dpuav_move_energy = [0.0 for _ in range(N_DPUAV)]
         """DPUAV运动的能耗"""
         for i, dpuav in enumerate(self.DPUAVs):
@@ -117,8 +110,7 @@ class Area:
         offload_choice = self.find_best_offload(link_dict)
         sum_dpuav_energy = sum(dpuav_move_energy)
         """DPUAV总的能耗"""
-        sum_etuav_energy = sum(etuav_move_energy)
-        """ETUAV总的能耗"""
+
         offload_energy = [0.0 for _ in range(N_user)]
         offload_aoi = [self.aoi[i] + time_slice for i in range(N_user)]
         for dpuav_index, ue_index, choice in offload_choice:
@@ -130,13 +122,13 @@ class Area:
             self.UEs[ue_index].offload_task()
         sum_dpuav_energy += sum(offload_energy)
         sum_aoi = sum(offload_aoi)
-        target = eta_1 * sum_aoi + eta_2 * sum_dpuav_energy + eta_3 * sum_etuav_energy
+        target = eta_1 * sum_aoi + eta_2 * sum_dpuav_energy
         """目标函数值"""
         self.aoi = offload_aoi  # 更新AOI
 
         state = self.calcul_state()
 
-        reward = [-target] * (N_DPUAV + N_ETUAV)
+        reward = [-target] * N_DPUAV
         done = False
 
         # # 画无人机的轨迹
@@ -162,74 +154,29 @@ class Area:
         ue_if_task = [0 if ue.task is None else 1 for ue in self.UEs]
         public_state = np.array(dpuav_aoi + ue_probability + ue_if_task)
 
-        state = [None for _ in range(N_DPUAV + N_ETUAV)]
+        state = [None for _ in range(N_DPUAV)]
         for i in range(N_DPUAV):
             state[i] = np.append(public_state, self.calcul_relative_horizontal_positions("dpuav", i))
-        for i in range(N_ETUAV):
-            state[i + N_DPUAV] = np.append(public_state, self.calcul_relative_horizontal_positions("etuav", i))
+
         return state
 
 
-    def calcul_relative_positions(self, type: str, index: int):
-        """计算DPUAV或者ETUAV与除自生外所有的UE,ETUAV,DPUAV的相对位置,弃用"""
-        relative_positions = []
-        if type == 'etuav':
-            center_position = self.ETUAVs[index].position
-            for ue in self.UEs:
-                rel_position = center_position.relative_position(ue.position)
-                relative_positions.append(rel_position)
-            for i, etuav in enumerate(self.ETUAVs):
-                if i != index:
-                    rel_position = center_position.relative_position(etuav.position)
-                    relative_positions.append(rel_position)
-            for dpuav in self.DPUAVs:
-                rel_position = center_position.relative_position(dpuav.position)
-                relative_positions.append(rel_position)
-        elif type == 'dpuav':
-            center_position = self.DPUAVs[index].position
-            for ue in self.UEs:
-                rel_position = center_position.relative_position(ue.position)
-                relative_positions.append(rel_position)
-            for etuav in self.ETUAVs:
-                rel_position = center_position.relative_position(etuav.position)
-                relative_positions.append(rel_position)
-            for i, dpuav in enumerate(self.DPUAVs):
-                if i != index:
-                    rel_position = center_position.relative_position(dpuav.position)
-                    relative_positions.append(rel_position)
-        else:
-            return False
-        return relative_positions
+
 
     def calcul_relative_horizontal_positions(self, type: str, index: int):
         """计算DPUAV或者ETUAV与除自生外所有的UE,ETUAV,DPUAV的相对水平位置"""
         relative_positions = []
-        if type == 'etuav':
-            center_position = self.ETUAVs[index].position
-            for ue in self.UEs:
-                rel_position = center_position.relative_horizontal_position(ue.position)
-                relative_positions += rel_position
-            for i, etuav in enumerate(self.ETUAVs):
-                if i != index:
-                    rel_position = center_position.relative_horizontal_position(etuav.position)
-                    relative_positions += rel_position
-            for dpuav in self.DPUAVs:
+
+        center_position = self.DPUAVs[index].position
+        for ue in self.UEs:
+            rel_position = center_position.relative_horizontal_position(ue.position)
+            relative_positions += rel_position
+
+        for i, dpuav in enumerate(self.DPUAVs):
+            if i != index:
                 rel_position = center_position.relative_horizontal_position(dpuav.position)
                 relative_positions += rel_position
-        elif type == 'dpuav':
-            center_position = self.DPUAVs[index].position
-            for ue in self.UEs:
-                rel_position = center_position.relative_horizontal_position(ue.position)
-                relative_positions += rel_position
-            for etuav in self.ETUAVs:
-                rel_position = center_position.relative_horizontal_position(etuav.position)
-                relative_positions += rel_position
-            for i, dpuav in enumerate(self.DPUAVs):
-                if i != index:
-                    rel_position = center_position.relative_horizontal_position(dpuav.position)
-                    relative_positions += rel_position
-        else:
-            return False
+
         return relative_positions
 
     def calcul_single_dpuav_single_ue_energy_aoi(self, dpuav_index: int, ue_index: int, offload_choice):
