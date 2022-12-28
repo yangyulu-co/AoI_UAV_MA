@@ -38,7 +38,7 @@ def make_env(args):
 
     env = Area()
 
-    args.n_agents = N_ETUAV + N_DPUAV
+    args.n_agents = env.agent_num
     args.public_obs_shape = env.public_state_dim
     args.private_obs_shape = env.private_state_dim
     args.overall_obs_shape = env.overall_state_dim
