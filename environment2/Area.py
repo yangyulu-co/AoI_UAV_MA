@@ -114,25 +114,9 @@ class Area:
 
         return state, reward, done, ''
 
-    # def calcul_state(self):
-    #     """计算所有UAV的状态信息，以[narray]格式返回"""
-    #     # 公共的环境信息
-    #     # 所有用户的AOI
-    #     dpuav_aoi = copy(self.aoi)
-    #     # 得到UE生成数据的速率
-    #     ue_probability = [ue.get_lambda() for ue in self.UEs]
-    #     # 得到UE是否有数据
-    #     ue_if_task = [0 if ue.task is None else 1 for ue in self.UEs]
-    #     public_state = np.array(dpuav_aoi + ue_probability + ue_if_task)
-    #
-    #     state = [None for _ in range(N_DPUAV + N_ETUAV)]
-    #     for i in range(N_DPUAV):
-    #         state[i] = np.append(public_state, self.calcul_relative_horizontal_positions("dpuav", i))
-    #     for i in range(N_ETUAV):
-    #         state[i + N_DPUAV] = np.append(public_state, self.calcul_relative_horizontal_positions("etuav", i))
-    #     return state
 
-    def calcul_etuav_target(self)->float:
+
+    def calcul_etuav_target(self) -> float:
         """计算etuav的目标函数值"""
         sum_energy = sum([ue.get_energy() for ue in self.UEs]) / N_user
         """用户平均电量"""
@@ -141,7 +125,6 @@ class Area:
         weight = 2 * (10 ** (-6))
         """低电量惩罚权重"""
         return sum_energy - punish * weight
-
 
     def calcul_etuav_state(self):
         """计算所有etuav的状态信息，包含电量和相对位置"""
@@ -171,54 +154,8 @@ class Area:
             return False
         return relative_positions
 
-    # def calcul_single_dpuav_single_ue_energy_aoi(self, dpuav_index: int, ue_index: int, offload_choice):
-    #     """计算单个dpuav单个ue的卸载决策下的能量消耗和aoi"""
-    #     energy = self.DPUAVs[dpuav_index].calcul_single_compute_and_offloading_energy(self.UEs[ue_index],
-    #                                                                                   offload_choice)
-    #     aoi = self.DPUAVs[dpuav_index].calcul_single_compute_and_offloading_aoi(self.UEs[ue_index], offload_choice)
-    #     if aoi is None:
-    #         aoi = self.aoi[ue_index] + 1
-    #     return energy, aoi
 
-    def find_single_dpuav_best_offload(self, dpuav_index: int, ue_index_list: list):
-        """穷举查找单个DPUAV下多个用户的最优卸载决策,返回数据格式为[dpuav_index,ue_index,{0,1,2}]组成的list"""
-        solutions = generate_solution(len(ue_index_list))
-        best_target = float('inf')
-        best_solution = None
 
-        for solution in solutions:
-            solution_energy = 0.0
-            solution_aoi = 0.0
-
-            for i in range(len(ue_index_list)):
-                energy, aoi = self.calcul_single_dpuav_single_ue_energy_aoi(dpuav_index, ue_index_list[i], solution[i])
-                solution_energy += energy
-                solution_aoi += aoi
-            target = solution_energy * eta_2 + solution_aoi * eta_1
-
-            if target < best_target:
-                best_solution = copy(solution)
-                best_target = target
-
-        ans = []
-        for i in range(len(ue_index_list)):
-            ans.append([dpuav_index, ue_index_list[i], best_solution[i]])
-        return ans
-
-    def find_best_offload(self, link: dict):
-        """穷举查找多个DPUAV下多个用户的最优卸载决策,返回数据格式为[dpuav_index,ue_index,{0,1,2}]组成的list"""
-        ans = []
-        for dpuav in link.keys():
-            single_ans = self.find_single_dpuav_best_offload(dpuav, link[dpuav])
-            ans += single_ans
-        return ans
-
-    def if_in_area(self, position) -> bool:
-        """判断位置是否在场地里"""
-        for i in range(2):
-            if not self.limit[0, i] <= position.data[0, i] <= self.limit[1, i]:
-                return False
-        return True
 
     def generate_single_UE_position(self) -> Position:
         """随机生成一个UE在区域里的点"""
