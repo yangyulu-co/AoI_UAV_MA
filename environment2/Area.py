@@ -69,9 +69,9 @@ class Area:
         self.limit[1, 1] = y_range / 2
 
         # 生成ue,etuav,dpuav
-        self.UEs = self.generate_UEs(N_user)
+        self.UEs = self.generate_UEs()
         """所有ue组成的列表"""
-        self.ETUAVs = self.generate_ETUAVs(N_ETUAV)
+        self.ETUAVs = self.generate_ETUAVs()
         """所有ETUAV组成的列表"""
 
         self.aoi = [0.0 for _ in range(N_user)]
@@ -79,9 +79,9 @@ class Area:
 
     def reset(self):
         # 生成ue,etuav,dpuav
-        self.UEs = self.generate_UEs(N_user)
+        self.UEs = self.generate_UEs()
         """所有ue组成的列表"""
-        self.ETUAVs = self.generate_ETUAVs(N_ETUAV)
+        self.ETUAVs = self.generate_ETUAVs()
         """所有ETUAV组成的列表"""
 
         self.aoi = [0.0 for _ in range(N_user)]
@@ -122,9 +122,10 @@ class Area:
         """用户平均电量"""
         punish = sum([ue.get_energy_state() for ue in self.UEs])
         """低电量惩罚"""
-        weight = 2 * (10 ** (-6))
+        weight1 = 2 * 10 ** 6
+        weight2 = 1
         """低电量惩罚权重"""
-        return sum_energy - punish * weight
+        return sum_energy * weight1 - punish * weight2
 
     def calcul_etuav_state(self):
         """计算所有etuav的状态信息，包含电量和相对位置"""
@@ -178,20 +179,34 @@ class Area:
         y = random.uniform(self.limit[0, 1], self.limit[1, 1])
         return Position(x, y, DPUAV_height)
 
-    def generate_UEs(self, num: int) -> [UE]:
+    # def generate_UEs(self, num: int) -> [UE]:
+    #     """生成指定数量的UE，返回一个list"""
+    #     # return [UE(self.generate_single_UE_position()) for _ in range(num)]
+    #     data = np.loadtxt('horizontal_ue_loc.txt', dtype=np.float32, delimiter=',')
+    #     return [UE(self.generate_single_UE_position()) for loc in range(num)]
+    #
+    # def generate_ETUAVs(self, num: int) -> [ETUAV]:
+    #     """生成指定数量ETUAV，返回一个list"""
+    #     return [ETUAV(self.generate_single_ETUAV_position()) for _ in range(num)]
+    #
+    # def generate_DPUAVs(self, num: int) -> [DPUAV]:
+    #     """生成指定数量DPUAV，返回一个list"""
+    #     return [DPUAV(self.generate_single_DPUAV_position()) for _ in range(num)]
+
+    def generate_UEs(self) -> [UE]:
         """生成指定数量的UE，返回一个list"""
-        return [UE(self.generate_single_UE_position()) for _ in range(num)]
+        data = np.loadtxt('environment2\horizontal_ue_loc.txt')
+        # print(data)
+        return [UE(Position(loc[0] * self.limit[1, 0], loc[1] * self.limit[1, 1], ETUAV_height)) for loc in data]
 
-    def generate_ETUAVs(self, num: int) -> [ETUAV]:
+    def generate_ETUAVs(self) -> [ETUAV]:
         """生成指定数量ETUAV，返回一个list"""
-        return [ETUAV(self.generate_single_ETUAV_position()) for _ in range(num)]
-
-    def generate_DPUAVs(self, num: int) -> [DPUAV]:
-        """生成指定数量DPUAV，返回一个list"""
-        return [DPUAV(self.generate_single_DPUAV_position()) for _ in range(num)]
+        data = np.loadtxt('environment2\horizontal_et_loc.txt')
+        return [ETUAV(Position(loc[0] * self.limit[1, 0], loc[1] * self.limit[1, 1], 0)) for loc in data]
 
 
 if __name__ == "__main__":
     area = Area()
+    print(area.generate_UEs())
     # area.step([np.array([0, 0.1]), np.array([0.2, 0.3]), np.array([0.4, 0.5]), np.array([0.6, 0.7])])
-    print(area.step([np.array([0, 0.1]), np.array([0.2, 0.3]), np.array([0.4, 0.5]), np.array([0.6, 0.7])]))
+    # print(area.step([np.array([0, 0.1]), np.array([0.2, 0.3]), np.array([0.4, 0.5]), np.array([0.6, 0.7])]))

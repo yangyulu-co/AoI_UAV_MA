@@ -9,7 +9,7 @@ class ETUAV(UAV):
 
     def __init__(self, position: Position):
         super().__init__(position, 10)
-        self.charge_power = 10.0
+        self.charge_power = 100.0
         """无人机无线充电的功率(W)"""
 
     def charge_ue(self, ue: UE):

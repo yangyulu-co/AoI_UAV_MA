@@ -15,9 +15,9 @@ class UE:
         self.position = position
         """UE所在位置"""
 
-        self.high_probability = 0.5
+        self.high_probability = 0.8
         """高电量时每个时间间隔产生数据的概率，待定"""
-        self.low_probability = 0.3
+        self.low_probability = 0.5
         """低电量时每个时间间隔产生数据的概率，待定"""
 
         self.energy = 1 * (10 ** (-5))
@@ -28,7 +28,7 @@ class UE:
         """电量阈值，低于阈值，进入低功耗状态"""
         self.energy_state = 1
         """电量状态，1为高电量，0为低电量"""
-        self.energy_conversion_efficiency = 0.1
+        self.energy_conversion_efficiency = 0.9
         """无线充电时能量收集效率"""
 
         self.task = None
@@ -77,7 +77,7 @@ class UE:
     def charge(self, energy: float):
         """给UE充电，单位为J"""
         temp_energy = energy * self.energy_conversion_efficiency
-        energy = min(self.energy_max, energy + temp_energy)
+        self.energy = min(self.energy_max, self.energy + temp_energy)
         self.update_energy_state()  # 更新电量状态
 
     def discharge(self, energy: float):
