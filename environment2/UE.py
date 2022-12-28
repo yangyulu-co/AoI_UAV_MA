@@ -77,7 +77,7 @@ class UE:
     def charge(self, energy: float):
         """给UE充电，单位为J"""
         temp_energy = energy * self.energy_conversion_efficiency
-        energy = min(self.energy_max, energy + temp_energy)
+        self.energy = min(self.energy_max, self.energy + temp_energy)
         self.update_energy_state()  # 更新电量状态
 
     def discharge(self, energy: float):
