@@ -197,12 +197,12 @@ class Area:
         """生成指定数量的UE，返回一个list"""
         data = np.loadtxt('environment2\horizontal_ue_loc.txt')
         # print(data)
-        return [UE(Position(loc[0] * self.limit[1, 0], loc[1] * self.limit[1, 1], ETUAV_height)) for loc in data]
+        return [UE(Position(loc[0] * self.limit[1, 0] * 2, loc[1] * self.limit[1, 1] * 2, ETUAV_height)) for loc in data]
 
     def generate_ETUAVs(self) -> [ETUAV]:
         """生成指定数量ETUAV，返回一个list"""
         data = np.loadtxt('environment2\horizontal_et_loc.txt')
-        return [ETUAV(Position(loc[0] * self.limit[1, 0], loc[1] * self.limit[1, 1], 0)) for loc in data]
+        return [ETUAV(Position(loc[0] * self.limit[1, 0] * 2, loc[1] * self.limit[1, 1] * 2, 0)) for loc in data]
 
 
 if __name__ == "__main__":
