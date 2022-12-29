@@ -17,7 +17,7 @@ def calcul_Prob_hat(radian: float) -> float:
     """给定弧度下考虑到LOS信道的等效衰减系数"""
     chi = 0.2
     Prob_Los = calcul_Prob_LoS(radian)
-    Prob_hat = Prob_Los * chi + (1 - Prob_Los)
+    Prob_hat = Prob_Los + (1 - Prob_Los) * chi
     return Prob_hat
 
 

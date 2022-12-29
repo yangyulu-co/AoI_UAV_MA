@@ -15,9 +15,9 @@ class UE:
         self.position = position
         """UE所在位置"""
 
-        self.high_probability = 0.8
+        self.high_probability = 1
         """高电量时每个时间间隔产生数据的概率，待定"""
-        self.low_probability = 0.5
+        self.low_probability = 1
         """低电量时每个时间间隔产生数据的概率，待定"""
 
         self.energy = 1 * (10 ** (-5))
@@ -28,7 +28,7 @@ class UE:
         """电量阈值，低于阈值，进入低功耗状态"""
         self.energy_state = 1
         """电量状态，1为高电量，0为低电量"""
-        self.energy_conversion_efficiency = 0.1
+        self.energy_conversion_efficiency = 0.4
         """无线充电时能量收集效率"""
 
         self.task = None
