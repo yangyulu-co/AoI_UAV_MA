@@ -120,12 +120,12 @@ class Area:
         """计算etuav的目标函数值"""
         sum_energy = sum([ue.get_energy() for ue in self.UEs]) / N_user
         """用户平均电量"""
-        punish = sum([ue.get_energy_state() for ue in self.UEs])
-        """低电量惩罚"""
+        punish = sum([ue.get_energy_state() - 1 for ue in self.UEs])
+        """低电量惩罚（是负数）"""
         weight1 = 2 * 10 ** 6
         weight2 = 1
         """低电量惩罚权重"""
-        return sum_energy * weight1 - punish * weight2
+        return -(sum_energy * weight1 + punish * weight2)
 
     def calcul_etuav_state(self):
         """计算所有etuav的状态信息，包含电量和相对位置"""
@@ -197,12 +197,12 @@ class Area:
         """生成指定数量的UE，返回一个list"""
         data = np.loadtxt('environment2\horizontal_ue_loc.txt')
         # print(data)
-        return [UE(Position(loc[0] * self.limit[1, 0], loc[1] * self.limit[1, 1], ETUAV_height)) for loc in data]
+        return [UE(Position(loc[0] * self.limit[1, 0], loc[1] * self.limit[1, 1], 0)) for loc in data]
 
     def generate_ETUAVs(self) -> [ETUAV]:
         """生成指定数量ETUAV，返回一个list"""
         data = np.loadtxt('environment2\horizontal_et_loc.txt')
-        return [ETUAV(Position(loc[0] * self.limit[1, 0], loc[1] * self.limit[1, 1], 0)) for loc in data]
+        return [ETUAV(Position(loc[0] * self.limit[1, 0], loc[1] * self.limit[1, 1], ETUAV_height)) for loc in data]
 
 
 if __name__ == "__main__":
