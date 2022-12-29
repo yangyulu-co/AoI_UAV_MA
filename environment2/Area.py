@@ -123,7 +123,7 @@ class Area:
         punish = sum([ue.get_energy_state() - 1 for ue in self.UEs])
         """低电量惩罚（是负数）"""
         weight1 = 2 * 10 ** 6
-        weight2 = 1
+        weight2 = 0
         """低电量惩罚权重"""
         return -(sum_energy * weight1 + punish * weight2)
 
