@@ -1,3 +1,4 @@
+import math
 import random
 from collections import defaultdict
 from copy import copy
@@ -127,6 +128,27 @@ class Area:
         """低电量惩罚权重"""
         return -(sum_energy * weight1 + punish * weight2)
 
+    def calcul_etuav_target_2(self)->float:
+        """计算etuav的目标函数值，增加边界外惩罚"""
+        """计算etuav的目标函数值"""
+        sum_energy = sum([ue.get_energy() for ue in self.UEs]) / N_user
+        """用户平均电量"""
+        punish = sum([ue.get_energy_state() - 1 for ue in self.UEs])
+        """低电量惩罚（是负数）"""
+        weight1 = 2 * 10 ** 6
+        weight2 = 0
+        """低电量惩罚权重"""
+
+
+        ans = [sum_energy * weight1 + punish * weight2 for _ in range(N_ETUAV)]
+        out_punish = -100
+        """etuav出界惩罚"""
+        for et in self.ETUAVs:
+            if et.position
+
+        return -(sum_energy * weight1 + punish * weight2)
+
+
     def calcul_etuav_state(self):
         """计算所有etuav的状态信息，包含电量和相对位置"""
         ue_energy = [ue.get_energy() for ue in self.UEs]
@@ -155,7 +177,17 @@ class Area:
             return False
         return relative_positions
 
+    def calcul_relative_horizontal_positions_radian_length(self, type: str,index:int):
+        """计算DPUAV或者ETUAV与除自生外所有的UE,ETUAV,DPUAV的相对水平位置,极坐标系形式"""
+        relative_positions = self.calcul_relative_horizontal_positions(type,index)
+        ans = [0 for _ in range(len(relative_positions))]
+        for i in range(len(relative_positions)//2):
 
+            radian = math.atan2(relative_positions[2*i+1],relative_positions[2*i])
+            length = (relative_positions[2 * i + 1]**2+relative_positions[2*i]**2) ** 0.5
+            ans[2*i] = radian
+            ans[2*i+1] = length
+        return ans
 
 
     def generate_single_UE_position(self) -> Position:
@@ -178,6 +210,7 @@ class Area:
         x = random.uniform(self.limit[0, 0], self.limit[1, 0])
         y = random.uniform(self.limit[0, 1], self.limit[1, 1])
         return Position(x, y, DPUAV_height)
+
 
     # def generate_UEs(self, num: int) -> [UE]:
     #     """生成指定数量的UE，返回一个list"""
