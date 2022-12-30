@@ -1,3 +1,4 @@
+import math
 import random
 from collections import defaultdict
 from copy import copy
@@ -108,13 +109,12 @@ class Area:
         state = self.calcul_etuav_state()
 
         # 计算目标函数
-        target = self.calcul_etuav_target()
-        reward = [-target] * N_ETUAV
+        # target = self.calcul_etuav_target()
+        # reward = [-target] * N_ETUAV
+        reward = self.calcul_etuav_target_out_publish()
         done = False
 
         return state, reward, done, ''
-
-
 
     def calcul_etuav_target(self) -> float:
         """计算etuav的目标函数值"""
@@ -126,6 +126,24 @@ class Area:
         weight2 = 1
         """低电量惩罚权重"""
         return -(sum_energy * weight1 + punish * weight2)
+
+    def calcul_etuav_target_out_publish(self) -> float:
+        """计算etuav的目标函数值,包含出界惩罚"""
+        sum_energy = sum([ue.get_energy() for ue in self.UEs]) / N_user
+        """用户平均电量"""
+        punish = sum([ue.get_energy_state() - 1 for ue in self.UEs])
+        """低电量惩罚（是负数）"""
+        weight1 = 2 * 10 ** 6
+        weight2 = 1
+        """低电量惩罚权重"""
+        ans = [sum_energy * weight1 + punish * weight2]*N_ETUAV
+        for i,et in enumerate(self.ETUAVs):
+            if not self.if_in_area(et.position):
+                ans[i] -= 100
+
+        return ans
+
+
 
     def calcul_etuav_state(self):
         """计算所有etuav的状态信息，包含电量和相对位置"""
@@ -155,8 +173,16 @@ class Area:
             return False
         return relative_positions
 
-
-
+    def calcul_relative_horizontal_positions_radian_length(self, type: str, index: int):
+        """计算DPUAV或者ETUAV与除自生外所有的UE,ETUAV,DPUAV的相对水平位置,极坐标系形式"""
+        relative_positions = self.calcul_relative_horizontal_positions(type, index)
+        ans = [0 for _ in range(len(relative_positions))]
+        for i in range(len(relative_positions) // 2):
+            radian = math.atan2(relative_positions[2 * i + 1], relative_positions[2 * i])
+            length = (relative_positions[2 * i + 1] ** 2 + relative_positions[2 * i] ** 2) ** 0.5
+            ans[2 * i] = radian
+            ans[2 * i + 1] = length
+        return ans
 
     def generate_single_UE_position(self) -> Position:
         """随机生成一个UE在区域里的点"""
@@ -203,6 +229,13 @@ class Area:
         """生成指定数量ETUAV，返回一个list"""
         data = np.loadtxt('environment2\horizontal_et_loc.txt')
         return [ETUAV(Position(loc[0] * self.limit[1, 0], loc[1] * self.limit[1, 1], ETUAV_height)) for loc in data]
+
+    def if_in_area(self, position) -> bool:
+        """判断位置是否在场地里"""
+        for i in range(2):
+            if not self.limit[0, i] <= position.data[0, i] <= self.limit[1, i]:
+                return False
+        return True
 
 
 if __name__ == "__main__":
