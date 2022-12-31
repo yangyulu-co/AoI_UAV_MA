@@ -95,10 +95,6 @@ class Area:
         for ue in self.UEs:
             ue.generate_task()
 
-        # ETUAV充电
-        for etuav in self.ETUAVs:
-            etuav.charge_all_ues(self.UEs)
-
         # 由强化学习控制，ETUAV开始运动
         etuav_move_energy = [0.0 for _ in range(N_ETUAV)]
         """ETUAV运动的能耗"""
@@ -106,6 +102,11 @@ class Area:
             etuav_move_energy[i] = etuav.move_by_radian_rate_2(actions[i][0], actions[i][1])
         # 计算状态
         state = self.calcul_etuav_state()
+
+        # ETUAV充电
+        for etuav in self.ETUAVs:
+            etuav.charge_all_ues(self.UEs)
+
 
         # 计算目标函数
         target = self.calcul_etuav_target()

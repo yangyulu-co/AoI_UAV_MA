@@ -1,4 +1,4 @@
-from environment2.Constant import time_slice, ETUAV_height
+from environment2.Constant import time_slice, ETUAV_height, ETUAV_speed
 from environment2.Position import Position
 from environment2.UAV import UAV, calcul_channel_gain
 from environment2.UE import UE
@@ -8,7 +8,7 @@ class ETUAV(UAV):
     """给UE进行无线充电的UAV，energy transmission"""
 
     def __init__(self, position: Position):
-        super().__init__(position, 10)
+        super().__init__(position, ETUAV_speed)
         self.charge_power = 100.0
         """无人机无线充电的功率(W)"""
 
