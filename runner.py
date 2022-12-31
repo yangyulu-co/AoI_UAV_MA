@@ -74,7 +74,7 @@ class Runner:
             s = self.env.reset()
             rewards = 0
             for time_step in range(self.args.evaluate_episode_len):
-                # self.env.render()
+
                 actions = []
                 with torch.no_grad():
                     for agent_id, agent in enumerate(self.agents):
@@ -84,6 +84,7 @@ class Runner:
                 s_next, r, done, info = self.env.step(actions)
                 rewards += r[0]
                 s = s_next
+            self.env.render()
             print('rewards=')
             print(rewards)
             returns.append(rewards)

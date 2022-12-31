@@ -1,6 +1,6 @@
-N_user = 16
+N_user = 1
 """用户数"""
-N_ETUAV = 2
+N_ETUAV = 1
 """ETUAV数量"""
 N_DPUAV = 2
 "DPUAV数量"
@@ -20,7 +20,7 @@ ETUAV_height =80
 """ETUAV飞行高度(m)"""
 DPUAV_height = 100
 """DPUAV飞行高度(m)"""
-ETUAV_speed = 10
+ETUAV_speed = 100
 """ETUAV飞行速度(m/s)"""
 DPUAV_speed = 10
 """DPUAV飞行速度(m/s)"""
