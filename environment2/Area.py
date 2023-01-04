@@ -93,8 +93,8 @@ class Area:
 
     def render(self):
         print(self.ETUAVs[0].position.tail)
-        print(self.UEs[0].position.data[0,0],self.UEs[0].position.data[0,1])
-        plt.scatter([self.UEs[0].position.data[0,0]],[self.UEs[0].position.data[0,1]])
+        # print(self.UEs[0].position.data[0,0],self.UEs[0].position.data[0,1])
+        plt.scatter([ue1.position.data[0,0] for ue1 in self.UEs],[ue2.position.data[0,1] for ue2 in self.UEs])
         plt.plot(self.ETUAVs[0].position.tail[:,0],self.ETUAVs[0].position.tail[:,1])
         plt.show()
 
@@ -108,11 +108,6 @@ class Area:
         # ETUAV充电
         for etuav in self.ETUAVs:
             etuav.charge_all_ues(self.UEs)
-
-        # ETUAV充电
-        for etuav in self.ETUAVs:
-            etuav.charge_all_ues(self.UEs)
-
 
         # 计算目标函数
         target = self.calcul_etuav_target()
@@ -137,7 +132,7 @@ class Area:
         weight1 = 2 * 10 ** 6
         weight2 = 0
         """低电量惩罚权重"""
-        return -(sum_energy * weight1 + punish * weight2-19)
+        return -(sum_energy * weight1 + punish * weight2 - 1)
 
     def calcul_etuav_target_out_publish(self) -> float:
         """计算etuav的目标函数值,包含出界惩罚"""

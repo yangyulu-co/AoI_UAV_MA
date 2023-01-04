@@ -84,9 +84,9 @@ class Runner:
                 s_next, r, done, info = self.env.step(actions)
                 rewards += r[0]
                 s = s_next
-            self.env.render()
-            print('rewards=')
-            print(rewards)
+            # self.env.render()
+            # print('rewards=')
+            # print(rewards)
             returns.append(rewards)
             # print('Returns is', rewards)
         return sum(returns) / self.args.evaluate_episodes
