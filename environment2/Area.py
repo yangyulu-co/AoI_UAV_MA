@@ -70,9 +70,9 @@ class Area:
         self.limit[1, 1] = y_range / 2
 
         # 生成ue,etuav,dpuav
-        self.UEs = self.generate_UEs()
+        self.UEs = self.generate_UEs(N_user)
         """所有ue组成的列表"""
-        self.ETUAVs = self.generate_ETUAVs()
+        self.ETUAVs = self.generate_ETUAVs(N_ETUAV)
         """所有ETUAV组成的列表"""
 
         self.aoi = [0.0 for _ in range(N_user)]
@@ -80,9 +80,9 @@ class Area:
 
     def reset(self):
         # 生成ue,etuav,dpuav
-        self.UEs = self.generate_UEs()
+        self.UEs = self.generate_UEs(N_user)
         """所有ue组成的列表"""
-        self.ETUAVs = self.generate_ETUAVs()
+        self.ETUAVs = self.generate_ETUAVs(N_ETUAV)
         """所有ETUAV组成的列表"""
 
         self.aoi = [0.0 for _ in range(N_user)]
@@ -91,26 +91,37 @@ class Area:
         state = self.calcul_etuav_state()
         return state
 
+    def render(self):
+        print(self.ETUAVs[0].position.tail)
+        print(self.UEs[0].position.data[0,0],self.UEs[0].position.data[0,1])
+        plt.scatter([self.UEs[0].position.data[0,0]],[self.UEs[0].position.data[0,1]])
+        plt.plot(self.ETUAVs[0].position.tail[:,0],self.ETUAVs[0].position.tail[:,1])
+        plt.show()
     def step(self, actions):  # action是每个agent动作向量(ndarray[0-2pi, 0-1])的列表，DP在前ET在后
-        # UE产生数据
-        for ue in self.UEs:
-            ue.generate_task()
 
-        # ETUAV充电
-        for etuav in self.ETUAVs:
-            etuav.charge_all_ues(self.UEs)
+
 
         # 由强化学习控制，ETUAV开始运动
         etuav_move_energy = [0.0 for _ in range(N_ETUAV)]
         """ETUAV运动的能耗"""
         for i, etuav in enumerate(self.ETUAVs):
             etuav_move_energy[i] = etuav.move_by_radian_rate_2(actions[i][0], actions[i][1])
-        # 计算状态
-        state = self.calcul_etuav_state()
+
+        # ETUAV充电
+        for etuav in self.ETUAVs:
+            etuav.charge_all_ues(self.UEs)
 
         # 计算目标函数
         target = self.calcul_etuav_target()
         reward = [-target] * N_ETUAV
+
+        # UE产生数据
+        for ue in self.UEs:
+            ue.generate_task()
+        # 计算状态
+        state = self.calcul_etuav_state()
+
+
         done = False
 
         return state, reward, done, ''
@@ -126,7 +137,7 @@ class Area:
         weight1 = 2 * 10 ** 6
         weight2 = 0
         """低电量惩罚权重"""
-        return -(sum_energy * weight1 + punish * weight2)
+        return -(sum_energy * weight1 + punish * weight2-19)
 
     def calcul_etuav_target_2(self)->float:
         """计算etuav的目标函数值，增加边界外惩罚"""
@@ -211,31 +222,28 @@ class Area:
         y = random.uniform(self.limit[0, 1], self.limit[1, 1])
         return Position(x, y, DPUAV_height)
 
-
-    # def generate_UEs(self, num: int) -> [UE]:
-    #     """生成指定数量的UE，返回一个list"""
-    #     # return [UE(self.generate_single_UE_position()) for _ in range(num)]
-    #     data = np.loadtxt('horizontal_ue_loc.txt', dtype=np.float32, delimiter=',')
-    #     return [UE(self.generate_single_UE_position()) for loc in range(num)]
-    #
-    # def generate_ETUAVs(self, num: int) -> [ETUAV]:
-    #     """生成指定数量ETUAV，返回一个list"""
-    #     return [ETUAV(self.generate_single_ETUAV_position()) for _ in range(num)]
-    #
-    # def generate_DPUAVs(self, num: int) -> [DPUAV]:
-    #     """生成指定数量DPUAV，返回一个list"""
-    #     return [DPUAV(self.generate_single_DPUAV_position()) for _ in range(num)]
-
-    def generate_UEs(self) -> [UE]:
+    def generate_UEs(self, num: int) -> [UE]:
         """生成指定数量的UE，返回一个list"""
-        data = np.loadtxt('environment2\horizontal_ue_loc.txt')
-        # print(data)
-        return [UE(Position(loc[0] * self.limit[1, 0], loc[1] * self.limit[1, 1], 0)) for loc in data]
+        return [UE(self.generate_single_UE_position()) for _ in range(num)]
 
-    def generate_ETUAVs(self) -> [ETUAV]:
+    def generate_ETUAVs(self, num: int) -> [ETUAV]:
         """生成指定数量ETUAV，返回一个list"""
-        data = np.loadtxt('environment2\horizontal_et_loc.txt')
-        return [ETUAV(Position(loc[0] * self.limit[1, 0], loc[1] * self.limit[1, 1], ETUAV_height)) for loc in data]
+        return [ETUAV(self.generate_single_ETUAV_position()) for _ in range(num)]
+
+    def generate_DPUAVs(self, num: int) -> [DPUAV]:
+        """生成指定数量DPUAV，返回一个list"""
+        return [DPUAV(self.generate_single_DPUAV_position()) for _ in range(num)]
+
+    # def generate_UEs(self) -> [UE]:
+    #     """生成指定数量的UE，返回一个list"""
+    #     data = np.loadtxt('environment2\horizontal_ue_loc.txt')
+    #     # print(data)
+    #     return [UE(Position(loc[0] * self.limit[1, 0], loc[1] * self.limit[1, 1], 0)) for loc in data]
+    #
+    # def generate_ETUAVs(self) -> [ETUAV]:
+    #     """生成指定数量ETUAV，返回一个list"""
+    #     data = np.loadtxt('environment2\horizontal_et_loc.txt')
+    #     return [ETUAV(Position(loc[0] * self.limit[1, 0], loc[1] * self.limit[1, 1], ETUAV_height)) for loc in data]
 
 
 if __name__ == "__main__":

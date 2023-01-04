@@ -20,7 +20,7 @@ class UE:
         self.low_probability = 1
         """低电量时每个时间间隔产生数据的概率，待定"""
 
-        self.energy = 1 * (10 ** (-5))
+        self.energy = 1 * (10 ** (-5)) * random.random()
         """用户的电量(j)"""
         self.energy_max = 1 * (10 ** (-5))
         """电量的最大值"""
@@ -28,7 +28,7 @@ class UE:
         """电量阈值，低于阈值，进入低功耗状态"""
         self.energy_state = 1
         """电量状态，1为高电量，0为低电量"""
-        self.energy_conversion_efficiency = 0.2
+        self.energy_conversion_efficiency = 1
         """无线充电时能量收集效率"""
 
         self.task = None
