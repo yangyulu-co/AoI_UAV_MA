@@ -42,10 +42,11 @@ def generate_solution(ue_num: int) -> list:
     max_count = 3 ** ue_num
     possible_solutions = []
     for i in range(max_count):
-        code = [0 for _ in range(ue_num)]
-        for j in range(ue_num):
-            code[j] = (i // (3 ** j)) % 3
-        if code.count(1) <= max_compute:
+        # code = [0 for _ in range(ue_num)]
+        # for j in range(ue_num):
+        #     code[j] = (i // (3 ** j)) % 3
+        code = [(i // (3 ** j)) % 3 for j in range(ue_num)]
+        if code.count(1) <= max_compute:  # 如果在DPUAV上计算的没有超出DPUAV的计算上限
             possible_solutions.append(code)
 
     return possible_solutions
@@ -59,7 +60,7 @@ class Area:
         self.agent_num = N_ETUAV
         self.action_dim = 2  # 角度和rate
         self.overall_state_dim = N_user + self.agent_num * 2 * (N_user + self.agent_num - 1)
-        self.public_state_dim = N_user  # 用户的AoI、lambda、队列状况是公有部分
+        self.public_state_dim = N_user  # 用户的电量
         self.private_state_dim = 2 * (N_user + self.agent_num - 1)  # 与其他的位置关系是私有部分
 
         self.limit = np.empty((2, 2), np.float32)
@@ -94,12 +95,11 @@ class Area:
     def render(self):
         print(self.ETUAVs[0].position.tail)
         print(self.UEs[0].position.data[0,0],self.UEs[0].position.data[0,1])
-        plt.scatter([self.UEs[0].position.data[0,0]],[self.UEs[0].position.data[0,1]])
+        for i in range(N_user):
+            plt.scatter([self.UEs[i].position.data[0, 0]], [self.UEs[i].position.data[0, 1]], c=['r'])
         plt.plot(self.ETUAVs[0].position.tail[:,0],self.ETUAVs[0].position.tail[:,1])
         plt.show()
     def step(self, actions):  # action是每个agent动作向量(ndarray[0-2pi, 0-1])的列表，DP在前ET在后
-
-
 
         # 由强化学习控制，ETUAV开始运动
         etuav_move_energy = [0.0 for _ in range(N_ETUAV)]
@@ -137,7 +137,9 @@ class Area:
         weight1 = 2 * 10 ** 6
         weight2 = 0
         """低电量惩罚权重"""
-        return -(sum_energy * weight1 + punish * weight2-19)
+        bias = 19
+        """为强化学习方便的一个偏置"""
+        return -(sum_energy * weight1 + punish * weight2-bias)
 
     def calcul_etuav_target_2(self)->float:
         """计算etuav的目标函数值，增加边界外惩罚"""
@@ -152,13 +154,23 @@ class Area:
 
 
         ans = [sum_energy * weight1 + punish * weight2 for _ in range(N_ETUAV)]
-        out_punish = -100
+        out_punish = 100
         """etuav出界惩罚"""
+        out_count = 0
         for et in self.ETUAVs:
-            if et.position
+            if not self.if_in_area(et.position):
+                out_count += 1
 
-        return -(sum_energy * weight1 + punish * weight2)
+        return -(sum_energy * weight1 + punish * weight2 - out_punish*out_count)
 
+
+
+    def if_in_area(self, position) -> bool:
+        """判断位置是否在场地里"""
+        for i in range(2):
+            if not self.limit[0, i] <= position.data[0, i] <= self.limit[1, i]:
+                return False
+        return True
 
     def calcul_etuav_state(self):
         """计算所有etuav的状态信息，包含电量和相对位置"""

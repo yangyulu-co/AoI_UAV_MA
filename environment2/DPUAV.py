@@ -3,7 +3,7 @@ import math
 import numpy as np
 
 
-from environment2.Constant import bs_computing_capacity
+from environment2.Constant import bs_computing_capacity, DPUAV_speed
 from environment2.Position import Position
 from environment2.Task import Task
 from environment2.UAV import UAV, calcul_channel_gain, calcul_SNR
@@ -17,7 +17,7 @@ class DPUAV(UAV):
     """数据处理UAV,data process"""
 
     def __init__(self, position: Position):
-        super().__init__(position, 10)
+        super().__init__(position, DPUAV_speed)
         self.B_ue = 1 * (10 ** 6)
         """与ue之间的传输带宽(Hz)"""
 
