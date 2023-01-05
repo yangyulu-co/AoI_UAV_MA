@@ -112,7 +112,9 @@ class Area:
         # 计算目标函数
         target = self.calcul_etuav_target()
         reward = [-target] * N_ETUAV
-
+        # 加入能量消耗惩罚
+        for et in range(N_ETUAV):
+            reward[i] -= etuav_move_energy[i] * 0.0001
         # UE产生数据
         for ue in self.UEs:
             ue.generate_task()
