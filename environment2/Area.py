@@ -130,14 +130,14 @@ class Area:
 
     def calcul_etuav_target(self) -> float:
         """计算etuav的目标函数值"""
-        sum_energy = sum([ue.get_energy() for ue in self.UEs]) / N_user
-        """用户平均电量"""
+        sum_energy = sum([ue.get_energy_percent() for ue in self.UEs]) / N_user
+        """用户平均百分比电量"""
         punish = sum([ue.get_energy_state() - 1 for ue in self.UEs])
         """低电量惩罚（是负数）"""
-        weight1 = 2 * 10 ** 6
+        weight1 = 1
         weight2 = 0
         """低电量惩罚权重"""
-        bias = 19
+        bias = 0.5
         """为强化学习方便的一个偏置"""
         return -(sum_energy * weight1 + punish * weight2-bias)
 
@@ -173,24 +173,24 @@ class Area:
         return True
 
     def calcul_etuav_state(self):
-        """计算所有etuav的状态信息，包含电量和相对位置"""
-        ue_energy = [ue.get_energy() for ue in self.UEs]
+        """计算所有etuav的状态信息，包含百分比电量和百分比相对位置"""
+        ue_energy = [ue.get_energy_percent() for ue in self.UEs]
         state = [None for _ in range(N_ETUAV)]
         for i in range(N_ETUAV):
             state[i] = np.array(ue_energy + self.calcul_relative_horizontal_positions('etuav', i))
         return state
 
     def calcul_relative_horizontal_positions(self, type: str, index: int):
-        """计算DPUAV或者ETUAV与除自生外所有的UE,ETUAV,DPUAV的相对水平位置"""
+        """计算DPUAV或者ETUAV与除自生外所有的UE,ETUAV,DPUAV的百分比相对水平位置"""
         relative_positions = []
         if type == 'etuav':
             center_position = self.ETUAVs[index].position
             for ue in self.UEs:
-                rel_position = center_position.relative_horizontal_position(ue.position)
+                rel_position = center_position.relative_horizontal_position_percent(ue.position,self.limit[1,0],self.limit[1,1])
                 relative_positions += rel_position
             for i, etuav in enumerate(self.ETUAVs):
                 if i != index:
-                    rel_position = center_position.relative_horizontal_position(etuav.position)
+                    rel_position = center_position.relative_horizontal_position_percent(etuav.position,self.limit[1,0],self.limit[1,1])
                     relative_positions += rel_position
             # for dpuav in self.DPUAVs:
             #     rel_position = center_position.relative_horizontal_position(dpuav.position)

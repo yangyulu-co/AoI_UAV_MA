@@ -78,6 +78,10 @@ class UE:
         """返回当前电量"""
         return self.energy
 
+    def get_energy_percent(self):
+        """返回百分比电量"""
+        return self.energy / self.energy_max
+
     def get_energy_state(self):
         """返回电量状态"""
         return self.energy_state
