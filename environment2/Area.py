@@ -93,12 +93,13 @@ class Area:
         return state
 
     def render(self):
-        print(self.ETUAVs[0].position.tail)
-
-        print(self.UEs[0].position.data[0,0],self.UEs[0].position.data[0,1])
+        # 画user离散点
         for i in range(N_user):
             plt.scatter([self.UEs[i].position.data[0, 0]], [self.UEs[i].position.data[0, 1]], c=['r'])
-        plt.plot(self.ETUAVs[0].position.tail[:,0],self.ETUAVs[0].position.tail[:,1])
+        # 画出ETUAV轨迹
+        for i in range(N_ETUAV):
+            plt.scatter([self.ETUAVs[i].position.data[0, 0]], [self.ETUAVs[i].position.data[0, 1]], c=['b'])
+            plt.plot(self.ETUAVs[i].position.tail[:,0],self.ETUAVs[i].position.tail[:,1])
         plt.show()
 
     def step(self, actions):  # action是每个agent动作向量(ndarray[0-2pi, 0-1])的列表，DP在前ET在后
@@ -107,18 +108,23 @@ class Area:
         etuav_move_energy = [0.0 for _ in range(N_ETUAV)]
         """ETUAV运动的能耗"""
         for i, etuav in enumerate(self.ETUAVs):
-            etuav_move_energy[i] = etuav.move_by_radian_rate_2(actions[i][0], actions[i][1])
+            etuav_move_energy[i] = etuav.move_by_xy_rate(actions[i][0], actions[i][1])
 
         # ETUAV充电
         for etuav in self.ETUAVs:
             etuav.charge_all_ues(self.UEs)
 
         # 计算目标函数
-        target = self.calcul_etuav_target()
-        reward = [-target] * N_ETUAV
+        # target = self.calcul_etuav_target()
+        reward = [None for _ in range(N_ETUAV)]
+        for i in range(N_ETUAV):
+            temp = self.calcul_relative_horizontal_positions('etuav', i)
+            reward[i] = -(temp[0]**2 + temp[1]**2) ** 0.5
+
+        # reward = [-target] * N_ETUAV
         # 加入能量消耗惩罚
         for et in range(N_ETUAV):
-            reward[i] -= etuav_move_energy[i] * 0.0001
+            reward[i] -= etuav_move_energy[i] * 0.0000
         # UE产生数据
         for ue in self.UEs:
             ue.generate_task()
@@ -138,7 +144,7 @@ class Area:
         weight1 = 1
         weight2 = 0
         """低电量惩罚权重"""
-        bias = 0.5
+        bias = 0.1
         """为强化学习方便的一个偏置"""
         return -(sum_energy * weight1 + punish * weight2-bias)
 
