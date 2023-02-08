@@ -80,11 +80,11 @@ class Runner:
                     for agent_id, agent in enumerate(self.agents):
                         action = agent.select_action(s[agent_id], 0, 0)
                         actions.append(action)
-                print(actions)
+                # print(actions)
                 s_next, r, done, info = self.env.step(actions)
                 rewards += r[0]
                 s = s_next
-            # self.env.render()
+            self.env.render()
             # print('rewards=')
             # print(rewards)
             returns.append(rewards)
