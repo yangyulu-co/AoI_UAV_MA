@@ -93,13 +93,17 @@ class Area:
         return state
 
     def render(self):
-        print(self.ETUAVs[0].position.tail)
-
-        print(self.UEs[0].position.data[0,0],self.UEs[0].position.data[0,1])
+        # 画user离散点
         for i in range(N_user):
             plt.scatter([self.UEs[i].position.data[0, 0]], [self.UEs[i].position.data[0, 1]], c=['r'])
-        plt.plot(self.ETUAVs[0].position.tail[:,0],self.ETUAVs[0].position.tail[:,1])
+        # 画出ETUAV轨迹
+        for i in range(N_ETUAV):
+            plt.scatter([self.ETUAVs[i].position.data[0, 0]], [self.ETUAVs[i].position.data[0, 1]], c=['b'])
+            plt.plot(self.ETUAVs[i].position.tail[:,0],self.ETUAVs[i].position.tail[:,1])
+        plt.xlim((-250,250))
+        plt.ylim((-250,250))
         plt.show()
+
 
     def step(self, actions):  # action是每个agent动作向量(ndarray[0-2pi, 0-1])的列表，DP在前ET在后
 

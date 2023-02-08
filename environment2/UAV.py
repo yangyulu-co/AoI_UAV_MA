@@ -82,9 +82,15 @@ class UAV:
 
     def move_by_radian_rate_2(self, radian: float, rate: float):
         """无人机水平运动，radian和rate输入范围为-1到1"""
-        new_radian = (radian + 1.0) / 2.0 * 2 * math.pi
+        new_radian = radian * math.pi
         new_rate = (rate + 1.0) / 2.0
         return self.move_by_radian_rate(new_radian, new_rate)
+
+    def move_by_xy_rate(self, x_rate: float, y_rate: float):
+        """无人机水平移动，x_rate和y_rate输入范围为-1到1,不返回功耗"""
+        self.position.move(self.speed_limit * x_rate, self.speed_limit * y_rate)
+        return 0
+
     # def add_temp_energy(self, energy:float):
     #     """一个时隙的能耗先暂时存放在这，时隙结束后再执行update_energy将能耗加入历史总能耗中"""
     #     self.temp_energy += energy
@@ -97,6 +103,7 @@ class UAV:
     # def get_temp_energy(self)->float:
     #     """返回这个时隙目前消耗的能量"""
     #     return self.temp_energy
+
 
 if __name__ == '__main__':
     print(energy_by_speed(100))
