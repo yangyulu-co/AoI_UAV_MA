@@ -82,8 +82,9 @@ class UAV:
 
     def move_by_radian_rate_2(self, radian: float, rate: float):
         """无人机水平运动，radian和rate输入范围为-1到1"""
-        new_radian = (radian + 1.0) / 2.0 * 2 * math.pi
-        new_rate = (rate + 1.0) / 2.0
+        new_radian = radian * math.pi
+        # new_rate = (rate + 1.0) / 2.0
+        new_rate = max(0,rate)
         return self.move_by_radian_rate(new_radian, new_rate)
 
     def move_by_xy_rate(self, x_rate:float,y_rate:float):

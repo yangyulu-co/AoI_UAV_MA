@@ -100,6 +100,8 @@ class Area:
         for i in range(N_ETUAV):
             plt.scatter([self.ETUAVs[i].position.data[0, 0]], [self.ETUAVs[i].position.data[0, 1]], c=['b'])
             plt.plot(self.ETUAVs[i].position.tail[:,0],self.ETUAVs[i].position.tail[:,1])
+        plt.xlim((-250,250))
+        plt.ylim((-250,250))
         plt.show()
 
     def step(self, actions):  # action是每个agent动作向量(ndarray[0-2pi, 0-1])的列表，DP在前ET在后
@@ -108,7 +110,7 @@ class Area:
         etuav_move_energy = [0.0 for _ in range(N_ETUAV)]
         """ETUAV运动的能耗"""
         for i, etuav in enumerate(self.ETUAVs):
-            etuav_move_energy[i] = etuav.move_by_xy_rate(actions[i][0], actions[i][1])
+            etuav_move_energy[i] = etuav.move_by_radian_rate_2(actions[i][0], actions[i][1])
 
         # ETUAV充电
         for etuav in self.ETUAVs:
@@ -120,7 +122,7 @@ class Area:
         for i in range(N_ETUAV):
             temp = self.calcul_relative_horizontal_positions('etuav', i)
             reward[i] = -(temp[0]**2 + temp[1]**2) ** 0.5
-
+        # print('reward',reward[0])
         # reward = [-target] * N_ETUAV
         # 加入能量消耗惩罚
         for et in range(N_ETUAV):
@@ -130,7 +132,7 @@ class Area:
             ue.generate_task()
         # 计算状态
         state = self.calcul_etuav_state()
-
+        # print(state)
         done = False
 
         return state, reward, done, ''
@@ -182,7 +184,7 @@ class Area:
         ue_energy = [ue.get_energy_percent() for ue in self.UEs]
         state = [None for _ in range(N_ETUAV)]
         for i in range(N_ETUAV):
-            state[i] = np.array(ue_energy + self.calcul_relative_horizontal_positions('etuav', i))
+            state[i] = np.array(ue_energy + self.calcul_relative_horizontal_positions_radian_length('etuav', i))
         return state
 
     def calcul_relative_horizontal_positions(self, type: str, index: int):
@@ -213,7 +215,8 @@ class Area:
         for i in range(len(relative_positions)//2):
 
             radian = math.atan2(relative_positions[2*i+1],relative_positions[2*i])
-            length = (relative_positions[2 * i + 1]**2+relative_positions[2*i]**2) ** 0.5
+            radian = radian / math.pi
+            length = (((relative_positions[2 * i + 1]*250)**2+(relative_positions[2*i]*250)**2) ** 0.5)/10
             ans[2*i] = radian
             ans[2*i+1] = length
         return ans
@@ -273,6 +276,15 @@ class Area:
 
 if __name__ == "__main__":
     area = Area()
-    print(area.generate_UEs())
+    move = [[0,0]]
+    stat = area.reset()
+    move[0][0] = stat[0][1]
+    move[0][1] = min(stat[0][2],1)
+    for i in range(100):
+        stat,reward,done,s = area.step(move)
+        move[0][0] = stat[0][1]
+        move[0][1] = min(stat[0][2], 1)
+    area.render()
+    # print(area.generate_UEs())
     # area.step([np.array([0, 0.1]), np.array([0.2, 0.3]), np.array([0.4, 0.5]), np.array([0.6, 0.7])])
     # print(area.step([np.array([0, 0.1]), np.array([0.2, 0.3]), np.array([0.4, 0.5]), np.array([0.6, 0.7])]))

@@ -16,7 +16,7 @@ def get_args():
     parser.add_argument("--lr-critic", type=float, default=1e-3, help="learning rate of critic")
     parser.add_argument("--epsilon", type=float, default=0.5, help="epsilon greedy")
     parser.add_argument("--noise_rate", type=float, default=0.8, help="noise rate for sampling from a standard normal distribution ")
-    parser.add_argument("--gamma", type=float, default=0.6, help="discount factor")
+    parser.add_argument("--gamma", type=float, default=0.0, help="discount factor")
     parser.add_argument("--tau", type=float, default=0.01, help="parameter for updating the target network")
     parser.add_argument("--buffer-size", type=int, default=int(5e5), help="number of transitions can be stored in buffer")
     parser.add_argument("--batch-size", type=int, default=256, help="number of episodes to optimize at the same time")
