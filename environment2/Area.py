@@ -249,23 +249,17 @@ class Area:
         """生成指定数量DPUAV，返回一个list"""
         return [DPUAV(self.generate_single_DPUAV_position()) for _ in range(num)]
 
-    # def generate_UEs(self) -> [UE]:
-    #     """生成指定数量的UE，返回一个list"""
-    #     data = np.loadtxt('environment2\horizontal_ue_loc.txt')
-    #     # print(data)
-    #     return [UE(Position(loc[0] * self.limit[1, 0], loc[1] * self.limit[1, 1], 0)) for loc in data]
-    #
-    # def generate_ETUAVs(self) -> [ETUAV]:
-    #     """生成指定数量ETUAV，返回一个list"""
-    #     data = np.loadtxt('environment2\horizontal_et_loc.txt')
-    #     return [ETUAV(Position(loc[0] * self.limit[1, 0], loc[1] * self.limit[1, 1], ETUAV_height)) for loc in data]
+    def load_UEs(self) -> [UE]:
+        """从txt文件加载UE的位置，返回一个list"""
+        data = np.loadtxt('environment2\horizontal_ue_loc.txt')
+        return [UE(Position(loc[0] * self.limit[1, 0], loc[1] * self.limit[1, 1], 0)) for loc in data]
 
-    def if_in_area(self, position) -> bool:
-        """判断位置是否在场地里"""
-        for i in range(2):
-            if not self.limit[0, i] <= position.data[0, i] <= self.limit[1, i]:
-                return False
-        return True
+    def load_ETUAVs(self) -> [ETUAV]:
+        """从txt文件加载ETUAV的位置，返回一个list"""
+        data = np.loadtxt('environment2\horizontal_et_loc.txt')
+        return [ETUAV(Position(loc[0] * self.limit[1, 0], loc[1] * self.limit[1, 1], ETUAV_height)) for loc in data]
+
+
 
 
 if __name__ == "__main__":

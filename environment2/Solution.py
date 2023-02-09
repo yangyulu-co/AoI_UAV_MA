@@ -1,7 +1,7 @@
 import numpy as np
 
 from environment2.Area import Area
-from environment2.Constant import ETUAV_speed, time_slice, N_ETUAV, N_user
+from environment2.Constant import ETUAV_speed, time_slice, N_ETUAV, N_user, time_length
 import math
 
 debug_print = False
@@ -29,13 +29,16 @@ def get_action(start_position: [float], target_position: [float]) -> [float]:
     radian = math.atan2(dy, dx)
     speed_rate = min(distance / (ETUAV_speed * time_slice), 1)
     return [radian, speed_rate]
+
+
 def get_action_2(start_position: [float], target_position: [float]) -> [float]:
     """输入出发位置和希望去的位置，然后返回dxdy的action"""
     dx = (target_position[0] - start_position[0]) * 250
     dy = (target_position[1] - start_position[1]) * 250
-    dx_rate = max(min(dx / (ETUAV_speed * time_slice), 1),-1)
-    dy_rate = max(min(dy / (ETUAV_speed * time_slice), 1),-1)
-    return [dx_rate,dy_rate]
+    dx_rate = max(min(dx / (ETUAV_speed * time_slice), 1), -1)
+    dy_rate = max(min(dy / (ETUAV_speed * time_slice), 1), -1)
+    return [dx_rate, dy_rate]
+
 
 class Solution:
     """加权重心解法"""
@@ -47,7 +50,7 @@ class Solution:
 
         self.count = 0
         """用户做出的action计数"""
-        self.sum_reward = 0
+        self.sum_reward = 0.0
         """累计的reward"""
 
     def step(self):
@@ -65,7 +68,6 @@ class Solution:
             print('2', weight_state)
         # 计算action
 
-
         action = [get_action_2([0, 0], get_gravity_center(position_state[_], weight_state[_])) for _ in range(N_ETUAV)]
 
         # print('position:',position_state)
@@ -78,29 +80,28 @@ class Solution:
         print('reward', self.sum_reward)
         self.problem.render()
 
-    def get_sum_reward(self):
+    def get_sum_reward(self) -> float:
         """返回累计的reward值"""
         return self.sum_reward
 
-    def get_step_count(self):
+    def get_step_count(self) -> int:
         """返回进行的step数"""
         return self.count
 
 
+def execute_solution():
+    """执行重心方法求解充电问题"""
+    area = Area()
+    solution = Solution(area)
+    for s in range(time_length):
+        solution.step()
+    return solution.get_sum_reward()
+
+
 if __name__ == "__main__":
-    # area = Area()
-    # solution = Solution(area)
-    # for i in range(100):
-    #     solution.step()
-    #     # solution.render()
-    # # solution.step()
-    # solution.render()
+
     average_reward = 0
     test_count = 20
     for test in range(test_count):
-        area = Area()
-        solution = Solution(area)
-        for i in range(100):
-            solution.step()
-        average_reward += solution.get_sum_reward()
-    print(average_reward/test_count)
+        average_reward += execute_solution()
+    print(average_reward / test_count)
