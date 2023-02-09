@@ -8,10 +8,10 @@ class Actor(nn.Module):
     def __init__(self, args, agent_id):
         super(Actor, self).__init__()
         self.max_action = args.high_action
-        self.fc1 = nn.Linear(args.public_obs_shape + args.private_obs_shape, 64)
+        self.fc1 = nn.Linear(args.public_obs_shape + args.private_obs_shape, 32)
         # self.fc2 = nn.Linear(64, 64)
         # self.fc3 = nn.Linear(64, 64)
-        self.action_out = nn.Linear(64, args.action_shape[agent_id])
+        self.action_out = nn.Linear(32, args.action_shape[agent_id])
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
@@ -26,10 +26,10 @@ class Critic(nn.Module):
     def __init__(self, args):
         super(Critic, self).__init__()
         self.max_action = args.high_action
-        self.fc1 = nn.Linear(args.overall_obs_shape + sum(args.action_shape), 64)
+        self.fc1 = nn.Linear(args.overall_obs_shape + sum(args.action_shape), 32)
         # self.fc2 = nn.Linear(64, 64)
         # self.fc3 = nn.Linear(64, 64)
-        self.q_out = nn.Linear(64, 1)
+        self.q_out = nn.Linear(32, 1)
 
     def forward(self, state, action):
         # overall_state = self.generate_overall_state(state)

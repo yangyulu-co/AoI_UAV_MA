@@ -29,6 +29,12 @@ class Runner:
 
     def run(self):
         returns = []
+        actor_loss = dict()
+        critic_loss = dict()
+        for i in range(self.args.n_agents):
+            actor_loss['agent_%d' % i] = np.array([])
+            critic_loss['agent_%d' % i] = np.array([])
+
         s = self.env.reset()
         for time_step in tqdm(range(self.args.time_steps)):
             # reset the environment
@@ -49,23 +55,26 @@ class Runner:
             s = s_next
             if self.buffer.current_size >= self.args.batch_size:
                 transitions = self.buffer.sample(self.args.batch_size)
-                for agent in self.agents:
+                for agent_id, agent in enumerate(self.agents):
                     other_agents = self.agents.copy()
                     other_agents.remove(agent)
-                    agent.learn(transitions, other_agents)
+                    critic_loss_temp, actor_loss_temp = agent.learn(transitions, other_agents)
+                    critic_loss['agent_%d' % agent_id] = np.append(critic_loss['agent_%d' % agent_id], critic_loss_temp)
+                    actor_loss['agent_%d' % agent_id] = np.append(actor_loss['agent_%d' % agent_id], actor_loss_temp)
+                    self.save_actor_critic_loss(agent_id, critic_loss['agent_%d' % agent_id], actor_loss['agent_%d' % agent_id])
             if time_step > 0 and time_step % self.args.evaluate_rate == 0:
                 evaluate_reward = self.evaluate()
                 print('Returns is', evaluate_reward)
                 returns.append(evaluate_reward)
+                np.savetxt(self.save_path + '/returns.csv', returns)
                 plt.figure()
                 plt.plot(range(len(returns)), returns)
                 plt.xlabel('episode * ' + str(self.args.evaluate_rate / self.episode_limit))
                 plt.ylabel('average returns')
-                plt.savefig(self.save_path + '/plt.png', format='png')
+                plt.savefig(self.save_path + '/reward.png', format='png')
                 plt.close()
             self.noise = max(0.05, self.noise - 0.0000005)
             self.epsilon = max(0.05, self.epsilon - 0.0000005)
-            np.save(self.save_path + '/returns.pkl', returns)
 
     def evaluate(self):
         returns = []
@@ -80,13 +89,29 @@ class Runner:
                     for agent_id, agent in enumerate(self.agents):
                         action = agent.select_action(s[agent_id], 0, 0)
                         actions.append(action)
-                print(actions)
+                # print(actions)
                 s_next, r, done, info = self.env.step(actions)
                 rewards += r[0]
                 s = s_next
             # self.env.render()
-            # print('rewards=')
-            # print(rewards)
             returns.append(rewards)
             # print('Returns is', rewards)
         return sum(returns) / self.args.evaluate_episodes
+
+    def save_actor_critic_loss(self, agent_id, critic_loss_single, actor_loss_single):
+        np.savetxt(self.save_path + '/agent_%d/critic_loss.csv' % agent_id,
+                   critic_loss_single)
+        np.savetxt(self.save_path + '/agent_%d/actor_loss.csv' % agent_id,
+                   actor_loss_single)
+        plt.figure()
+        plt.plot(range(len(critic_loss_single)), critic_loss_single)
+        plt.xlabel('episode * ' + str(self.args.batch_size))
+        plt.ylabel('agent_%d critic loss' % agent_id)
+        plt.savefig(self.save_path + '/agent_%d/critic_loss.png' % agent_id, format='png')
+        plt.close()
+        plt.figure()
+        plt.plot(range(len(actor_loss_single)), actor_loss_single)
+        plt.xlabel('episode * ' + str(self.args.batch_size))
+        plt.ylabel('agent_%d actor loss' % agent_id)
+        plt.savefig(self.save_path + '/agent_%d/actor_loss.png' % agent_id, format='png')
+        plt.close()
