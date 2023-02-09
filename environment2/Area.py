@@ -93,12 +93,14 @@ class Area:
         return state
 
     def render(self):
-        print(self.ETUAVs[0].position.tail)
+        # print(self.ETUAVs[0].position.tail)
 
-        print(self.UEs[0].position.data[0,0],self.UEs[0].position.data[0,1])
+        # print(self.UEs[0].position.data[0,0],self.UEs[0].position.data[0,1])
         for i in range(N_user):
             plt.scatter([self.UEs[i].position.data[0, 0]], [self.UEs[i].position.data[0, 1]], c=['r'])
-        plt.plot(self.ETUAVs[0].position.tail[:,0],self.ETUAVs[0].position.tail[:,1])
+        for i in range(N_ETUAV):
+            plt.scatter([self.ETUAVs[i].position.data[0, 0]], [self.ETUAVs[i].position.data[0, 1]], c=['b'])
+            plt.plot(self.ETUAVs[i].position.tail[:,0],self.ETUAVs[i].position.tail[:,1])
         plt.show()
 
     def step(self, actions):  # action是每个agent动作向量(ndarray[0-2pi, 0-1])的列表，DP在前ET在后
@@ -118,7 +120,7 @@ class Area:
         reward = [-target] * N_ETUAV
         # 加入能量消耗惩罚
         for et in range(N_ETUAV):
-            reward[i] -= etuav_move_energy[i] * 0.0001
+            reward[i] -= etuav_move_energy[i] * 0
         # UE产生数据
         for ue in self.UEs:
             ue.generate_task()
@@ -138,7 +140,7 @@ class Area:
         weight1 = 1
         weight2 = 0
         """低电量惩罚权重"""
-        bias = 0.5
+        bias = 0.2
         """为强化学习方便的一个偏置"""
         return -(sum_energy * weight1 + punish * weight2-bias)
 
