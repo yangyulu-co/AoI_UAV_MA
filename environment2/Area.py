@@ -93,34 +93,35 @@ class Area:
         return state
 
     def render(self):
-        # print(self.ETUAVs[0].position.tail)
-
-        # print(self.UEs[0].position.data[0,0],self.UEs[0].position.data[0,1])
+        # 画user离散点
         for i in range(N_user):
             plt.scatter([self.UEs[i].position.data[0, 0]], [self.UEs[i].position.data[0, 1]], c=['r'])
+        # 画出ETUAV轨迹
         for i in range(N_ETUAV):
             plt.scatter([self.ETUAVs[i].position.data[0, 0]], [self.ETUAVs[i].position.data[0, 1]], c=['b'])
             plt.plot(self.ETUAVs[i].position.tail[:,0],self.ETUAVs[i].position.tail[:,1])
+        plt.xlim((-250,250))
+        plt.ylim((-250,250))
         plt.show()
+
 
     def step(self, actions):  # action是每个agent动作向量(ndarray[0-2pi, 0-1])的列表，DP在前ET在后
 
         # 由强化学习控制，ETUAV开始运动
-        etuav_move_energy = [0.0 for _ in range(N_ETUAV)]
+        etuav_move_energy = [etuav.move_by_xy_rate(actions[i][0], actions[i][1]) for i, etuav in
+                             enumerate(self.ETUAVs)]
         """ETUAV运动的能耗"""
-        for i, etuav in enumerate(self.ETUAVs):
-            etuav_move_energy[i] = etuav.move_by_radian_rate_2(actions[i][0], actions[i][1])
 
-        # ETUAV充电
-        for etuav in self.ETUAVs:
-            etuav.charge_all_ues(self.UEs)
+        # ETUAV充电,并记录充入的电量
+        etuav_charge_energy = [etuav.charge_all_ues(self.UEs) for etuav in self.ETUAVs]
+        """ETUAV给用户冲入的电量"""
 
         # 计算目标函数
         target = self.calcul_etuav_target()
-        reward = [-target] * N_ETUAV
+        reward = [target] * N_ETUAV
         # 加入能量消耗惩罚
-        for et in range(N_ETUAV):
-            reward[i] -= etuav_move_energy[i] * 0
+        for i in range(N_ETUAV):
+            reward[i] -= etuav_move_energy[i] * 0.0000
         # UE产生数据
         for ue in self.UEs:
             ue.generate_task()
@@ -140,9 +141,9 @@ class Area:
         weight1 = 1
         weight2 = 0
         """低电量惩罚权重"""
-        bias = 0.2
+        bias = 0.0
         """为强化学习方便的一个偏置"""
-        return -(sum_energy * weight1 + punish * weight2-bias)
+        return sum_energy * weight1 + punish * weight2 - bias
 
     def calcul_etuav_target_2(self)->float:
         """计算etuav的目标函数值，增加边界外惩罚"""
