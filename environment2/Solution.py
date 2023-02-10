@@ -89,7 +89,7 @@ class Solution:
         return self.count
 
 
-def execute_solution():
+def execute_weight_solution():
     """执行重心方法求解充电问题"""
     area = Area()
     solution = Solution(area)
@@ -103,5 +103,5 @@ if __name__ == "__main__":
     average_reward = 0
     test_count = 20
     for test in range(test_count):
-        average_reward += execute_solution()
+        average_reward += execute_weight_solution()
     print(average_reward / test_count)
