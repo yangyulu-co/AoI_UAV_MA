@@ -29,7 +29,7 @@ def get_args():
     # Evaluate
     parser.add_argument("--evaluate-episodes", type=int, default=5, help="number of episodes for evaluating")
     parser.add_argument("--evaluate-episode-len", type=int, default=100, help="length of episodes for evaluating")
-    parser.add_argument("--evaluate", type=bool, default=False, help="whether to evaluate the model")
+    parser.add_argument("--evaluate", type=bool, default=True, help="whether to evaluate the model")
     parser.add_argument("--evaluate-rate", type=int, default=500, help="how often to evaluate model")
     parser.add_argument("--save_loss", type=bool, default=True, help="whether to save loss")
     args = parser.parse_args()
