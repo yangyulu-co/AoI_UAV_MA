@@ -81,14 +81,14 @@ class Area:
 
     def reset(self):
         # 生成ue,etuav,dpuav
-        # self.UEs = self.generate_UEs(N_user)
-        # """所有ue组成的列表"""
-        # self.ETUAVs = self.generate_ETUAVs(N_ETUAV)
-        # """所有ETUAV组成的列表"""
-        self.UEs = self.load_UEs()
+        self.UEs = self.generate_UEs(N_user)
         """所有ue组成的列表"""
-        self.ETUAVs = self.load_ETUAVs()
+        self.ETUAVs = self.generate_ETUAVs(N_ETUAV)
         """所有ETUAV组成的列表"""
+        # self.UEs = self.load_UEs()
+        # """所有ue组成的列表"""
+        # self.ETUAVs = self.load_ETUAVs()
+        # """所有ETUAV组成的列表"""
         self.aoi = [0.0 for _ in range(N_user)]
         """UE的aoi"""
 

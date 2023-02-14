@@ -5,7 +5,7 @@ import numpy as np
 import random
 import torch
 def execute_ai_solution():
-    """执行强化学习方法求解充电问题"""
+    """加载强化学习模型，执行强化学习方法求解充电问题"""
     # get the params
     _args = get_args()
     _env, _args = make_env(_args)
