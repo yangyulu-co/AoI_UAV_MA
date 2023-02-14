@@ -6,7 +6,7 @@ from environment2.Constant import UE_high_probability, UE_low_probability, N_use
 import os
 import shutil
 
-# 改变模型
+# 改变模型参数，查看reward的变化并保存到csv
 from runner import Runner
 
 if __name__ == '__main__':
