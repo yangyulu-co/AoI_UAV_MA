@@ -16,8 +16,12 @@ def get_gravity_center(position: [float], weight: [float]) -> [float]:
     for i in range(len(weight)):
         center_x += position[2 * i] * weight[i]
         center_y += position[2 * i + 1] * weight[i]
-    center_x /= sum_weight
-    center_y /= sum_weight
+    if sum_weight != 0:
+        center_x /= sum_weight
+        center_y /= sum_weight
+    else:
+        center_x = 0
+        center_y = 0
     return [center_x, center_y]
 
 
@@ -63,7 +67,7 @@ class Solution:
         if debug_print:
             print('1', weight_state)
         for etuav in range(N_ETUAV):
-            weight_state[etuav] = [1 if _ < 0.5 else 0 for _ in weight_state[etuav]]
+            weight_state[etuav] = [1 if _ < 0.2 else 0 for _ in weight_state[etuav]]
         if debug_print:
             print('2', weight_state)
         # 计算action
@@ -78,7 +82,7 @@ class Solution:
 
     def render(self):
         print('reward', self.sum_reward)
-        self.problem.render()
+        self.problem.render("UAV trajectory obtained by Weight strategy")
 
     def get_sum_reward(self) -> float:
         """返回累计的reward值"""
@@ -95,6 +99,7 @@ def execute_weight_solution():
     solution = Solution(area)
     for s in range(time_length):
         solution.step()
+    # solution.render()
     return solution.get_sum_reward()
 
 

@@ -98,7 +98,7 @@ class Runner:
                 rewards += r[0]
                 s = s_next
 
-            self.env.render()
+            # self.env.render('UAV trajectory obtained by RL')
             # print('rewards=')
             # print(rewards)
             returns.append(rewards)

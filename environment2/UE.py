@@ -8,16 +8,16 @@ from environment2.Position import Position
 from environment2.Task import Task
 from environment2.UAV import calcul_SNR, calcul_channel_gain
 from environment2.DPUAV import DPUAV
-
+from environment2.Constant import UE_high_probability,UE_low_probability
 
 class UE:
     def __init__(self, position, speed_limit=0):
         self.position = position
         """UE所在位置"""
 
-        self.high_probability = 1
+        self.high_probability = UE_high_probability
         """高电量时每个时间间隔产生数据的概率，待定"""
-        self.low_probability = 0.5
+        self.low_probability = UE_low_probability
         """低电量时每个时间间隔产生数据的概率，待定"""
 
         self.energy = 1 * (10 ** (-5)) * random.random()

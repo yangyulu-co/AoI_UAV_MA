@@ -81,27 +81,40 @@ class Area:
 
     def reset(self):
         # 生成ue,etuav,dpuav
-        self.UEs = self.generate_UEs(N_user)
+        # self.UEs = self.generate_UEs(N_user)
+        # """所有ue组成的列表"""
+        # self.ETUAVs = self.generate_ETUAVs(N_ETUAV)
+        # """所有ETUAV组成的列表"""
+        self.UEs = self.load_UEs()
         """所有ue组成的列表"""
-        self.ETUAVs = self.generate_ETUAVs(N_ETUAV)
+        self.ETUAVs = self.load_ETUAVs()
         """所有ETUAV组成的列表"""
-
         self.aoi = [0.0 for _ in range(N_user)]
         """UE的aoi"""
 
         state = self.calcul_etuav_state()
         return state
 
-    def render(self):
+    def render(self,title:str):
         # 画user离散点
+        user_x = []
+        user_y = []
         for i in range(N_user):
-            plt.scatter([self.UEs[i].position.data[0, 0]], [self.UEs[i].position.data[0, 1]], c=['r'])
+            user_x.append(self.UEs[i].position.data[0, 0])
+            user_y.append(self.UEs[i].position.data[0, 1])
+        plt.scatter(user_x, user_y, c='#696969',marker='.',label='UE')
         # 画出ETUAV轨迹
         for i in range(N_ETUAV):
-            plt.scatter([self.ETUAVs[i].position.data[0, 0]], [self.ETUAVs[i].position.data[0, 1]], c=['b'])
-            plt.plot(self.ETUAVs[i].position.tail[:,0],self.ETUAVs[i].position.tail[:,1])
+            color = '#1f77b4' if i == 0 else '#ff7f0e'
+            plt.scatter([self.ETUAVs[i].position.data[0, 0]], [self.ETUAVs[i].position.data[0, 1]],marker='o',c=color,label='UAV'+str(i)+' end')
+            plt.plot(self.ETUAVs[i].position.tail[:,0],self.ETUAVs[i].position.tail[:,1],c=color,label='UAV'+str(i))
+            plt.scatter([self.ETUAVs[i].position.tail[0,0]],[self.ETUAVs[i].position.tail[0,1]], marker='x',c=color,label='UAV'+str(i)+' start')
         plt.xlim((-250,250))
         plt.ylim((-250,250))
+        plt.xlabel("x(m)")
+        plt.ylabel("y(m)")
+        plt.title(title)
+        plt.legend()
         plt.show()
 
 
@@ -111,7 +124,7 @@ class Area:
         etuav_move_energy = [etuav.move_by_xy_rate(actions[i][0], actions[i][1]) for i, etuav in
                              enumerate(self.ETUAVs)]
         """ETUAV运动的能耗"""
-
+        # print(etuav_move_energy)
         # ETUAV充电,并记录充入的电量
         etuav_charge_energy = [etuav.charge_all_ues(self.UEs) for etuav in self.ETUAVs]
         """ETUAV给用户冲入的电量"""

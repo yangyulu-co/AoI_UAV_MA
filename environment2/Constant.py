@@ -24,3 +24,7 @@ ETUAV_speed = 10
 """ETUAV飞行速度(m/s)"""
 DPUAV_speed = 10
 """DPUAV飞行速度(m/s)"""
+UE_high_probability = 1
+"""UE高电量时每个时间间隔产生数据的概率"""
+UE_low_probability= 0.5
+"""UE低电量时每个时间间隔产生数据的概率"""
