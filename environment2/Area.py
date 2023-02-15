@@ -41,10 +41,11 @@ def generate_solution(ue_num: int) -> list:
     max_count = 3 ** ue_num
     possible_solutions = []
     for i in range(max_count):
-        code = [0 for _ in range(ue_num)]
-        for j in range(ue_num):
-            code[j] = (i // (3 ** j)) % 3
-        if code.count(1) <= max_compute:
+        # code = [0 for _ in range(ue_num)]
+        # for j in range(ue_num):
+        #     code[j] = (i // (3 ** j)) % 3
+        code = [(i // (3 ** j)) % 3 for j in range(ue_num)]
+        if code.count(1) <= max_compute:  # 如果在DPUAV上计算的没有超出DPUAV的计算上限
             possible_solutions.append(code)
 
     return possible_solutions
@@ -95,13 +96,9 @@ class Area:
             ue.generate_task()
             ue.charge(1.0)
 
-
-
         # 由强化学习控制，UAV开始运动
-        dpuav_move_energy = [0.0 for _ in range(N_DPUAV)]
+        dpuav_move_energy = [dpuav.move_by_xy_rate(actions[i][0], actions[i][1]) for i, dpuav in enumerate(self.DPUAVs)]
         """DPUAV运动的能耗"""
-        for i, dpuav in enumerate(self.DPUAVs):
-            dpuav_move_energy[i] = dpuav.move_by_radian_rate_2(actions[i][0], actions[i][1])
 
         # 计算连接情况
         link_dict = get_link_dict(self.UEs, self.DPUAVs)
@@ -152,16 +149,13 @@ class Area:
         ue_probability = [ue.get_lambda() for ue in self.UEs]
         # 得到UE是否有数据
         ue_if_task = [0 if ue.task is None else 1 for ue in self.UEs]
-        public_state = np.array(dpuav_aoi + ue_probability + ue_if_task)
+        public_state = dpuav_aoi + ue_probability + ue_if_task
 
         state = [None for _ in range(N_DPUAV)]
         for i in range(N_DPUAV):
-            state[i] = np.append(public_state, self.calcul_relative_horizontal_positions("dpuav", i))
+            state[i] = np.array(public_state + self.calcul_relative_horizontal_positions("dpuav", i))
 
         return state
-
-
-
 
     def calcul_relative_horizontal_positions(self, type: str, index: int):
         """计算DPUAV或者ETUAV与除自生外所有的UE,ETUAV,DPUAV的相对水平位置"""
@@ -169,12 +163,14 @@ class Area:
 
         center_position = self.DPUAVs[index].position
         for ue in self.UEs:
-            rel_position = center_position.relative_horizontal_position(ue.position)
+            rel_position = center_position.relative_horizontal_position_percent \
+                (ue.position, self.limit[1, 0], self.limit[1, 1])
             relative_positions += rel_position
 
         for i, dpuav in enumerate(self.DPUAVs):
             if i != index:
-                rel_position = center_position.relative_horizontal_position(dpuav.position)
+                rel_position = center_position.relative_horizontal_position_percent \
+                    (dpuav.position, self.limit[1, 0], self.limit[1, 1])
                 relative_positions += rel_position
 
         return relative_positions
