@@ -30,10 +30,13 @@ class MADDPG:
 
         # use cuda
         if self.use_cuda:
+            print("choose to use GPU")
             self.actor_network.cuda()
             self.critic_network.cuda()
             self.actor_target_network.cuda()
             self.critic_target_network.cuda()
+        else:
+            print("choose to use CPU")
 
         # create the dict for store the model
         if not os.path.exists(self.args.save_dir):
@@ -69,10 +72,10 @@ class MADDPG:
     def train(self, transitions, other_agents):
         for key in transitions.keys():
             if self.use_cuda:
-                transitions[key] = torch.tensor(transitions[key], dtype=torch.float32, device='cuda')
+                transitions[key] = torch.as_tensor(transitions[key], dtype=torch.float32, device='cuda')
                 # transitions[key] = to_tensor_var(transitions[key], self.use_cuda, 'float')
             else:
-                transitions[key] = torch.tensor(transitions[key], dtype=torch.float32, device='cpu')
+                transitions[key] = torch.as_tensor(transitions[key], dtype=torch.float32)
         r = transitions['r_%d' % self.agent_id]  # 训练时只需要自己的reward
         o, u, o_next = [], [], []  # 用来装每个agent经验中的各项
         for agent_id in range(self.args.n_agents):
@@ -109,6 +112,8 @@ class MADDPG:
         # 重新选择联合动作中当前agent的动作，其他agent的动作不变
         u[self.agent_id] = self.actor_network(o[self.agent_id])
         actor_loss = - self.critic_network(overall_state, u).mean()
+        # print(actor_loss.detach().numpy())
+
         # if self.agent_id == 0:
         #     print('critic_loss is {}, actor_loss is {}'.format(critic_loss, actor_loss))
         # update the network
@@ -123,6 +128,8 @@ class MADDPG:
         if self.train_step > 0 and self.train_step % self.args.save_rate == 0:
             self.save_model(self.train_step)
         self.train_step += 1
+
+        return critic_loss.detach().numpy(), actor_loss.detach().numpy()
 
     def save_model(self, train_step):
         num = str(train_step // self.args.save_rate)
