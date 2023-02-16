@@ -90,6 +90,27 @@ class Area:
         state = self.calcul_state()
         return state
 
+    def render(self,title:str):
+        # 画user离散点
+        user_x = []
+        user_y = []
+        for i in range(N_user):
+            user_x.append(self.UEs[i].position.data[0, 0])
+            user_y.append(self.UEs[i].position.data[0, 1])
+        plt.scatter(user_x, user_y, c='#696969',marker='.',label='UE')
+        # 画出ETUAV轨迹
+        for i in range(N_DPUAV):
+            color = '#1f77b4' if i == 0 else '#ff7f0e'
+            plt.scatter([self.DPUAVs[i].position.data[0, 0]], [self.DPUAVs[i].position.data[0, 1]],marker='o',c=color,label='UAV'+str(i)+' end')
+            plt.plot(self.DPUAVs[i].position.tail[:,0],self.DPUAVs[i].position.tail[:,1],c=color,label='UAV'+str(i))
+            plt.scatter([self.DPUAVs[i].position.tail[0,0]],[self.DPUAVs[i].position.tail[0,1]], marker='x',c=color,label='UAV'+str(i)+' start')
+        # plt.xlim((-250,250))
+        # plt.ylim((-250,250))
+        plt.xlabel("x(m)")
+        plt.ylabel("y(m)")
+        plt.title(title)
+        plt.legend()
+        plt.show()
     def step(self, actions):  # action是每个agent动作向量(ndarray[0-2pi, 0-1])的列表，DP在前ET在后
         # UE产生数据并冲满电
         for ue in self.UEs:
