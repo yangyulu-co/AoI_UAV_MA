@@ -20,7 +20,7 @@ def get_link_dict(ues: [UE], dpuavs: [DPUAV]):
         near_dpuav = None
         near_distance = None
         for j, dpuav in enumerate(dpuavs):
-            if ue.if_link_DPUAV(dpuav) and ue.task is not None:  # 如果在连接范围内且存在task需要卸载
+            if ue.if_link_DPUAV(dpuav) and ue.if_have_task():  # 如果在连接范围内且存在task需要卸载
                 distance = ue.distance_DPUAV(dpuav)
                 if near_dpuav is None or near_distance > distance:
                     near_dpuav = j
@@ -131,22 +131,26 @@ class Area:
 
         offload_energy = [0.0 for _ in range(N_user)]
         offload_aoi = [self.aoi[i] + time_slice for i in range(N_user)]
+        DPUAV_reduced_aoi = [0.0 for _ in range(N_DPUAV)]
+        """此回合中每个DPUAV通过卸载减少的aoi"""
         for dpuav_index, ue_index, choice in offload_choice:
             # 计算能量和aoi
             energy, aoi = self.calcul_single_dpuav_single_ue_energy_aoi(dpuav_index, ue_index, choice)
             offload_energy[ue_index] = energy
+            DPUAV_reduced_aoi[dpuav_index] += offload_aoi[ue_index] - aoi
             offload_aoi[ue_index] = aoi
             # 卸载任务
             self.UEs[ue_index].offload_task()
         sum_dpuav_energy += sum(offload_energy)
         sum_aoi = sum(offload_aoi)
-        target = eta_1 * sum_aoi + eta_2 * sum_dpuav_energy
+        # target = eta_1 * sum_aoi + eta_2 * sum_dpuav_energy
         """目标函数值"""
         self.aoi = offload_aoi  # 更新AOI
 
         state = self.calcul_state()
 
-        reward = [-target] * N_DPUAV
+        # reward = [-target] * N_DPUAV
+        reward = DPUAV_reduced_aoi
         done = False
 
         # # 画无人机的轨迹
@@ -169,7 +173,7 @@ class Area:
         # 得到UE生成数据的速率
         ue_probability = [ue.get_lambda() for ue in self.UEs]
         # 得到UE是否有数据
-        ue_if_task = [0 if ue.task is None else 1 for ue in self.UEs]
+        ue_if_task = [1 if ue.if_have_task() else 0 for ue in self.UEs]
         public_state = dpuav_aoi + ue_probability + ue_if_task
 
         state = [None for _ in range(N_DPUAV)]

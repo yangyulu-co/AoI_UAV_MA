@@ -8,7 +8,8 @@ from environment2.Position import Position
 from environment2.Task import Task
 from environment2.UAV import calcul_SNR, calcul_channel_gain
 from environment2.DPUAV import DPUAV
-from environment2.Constant import UE_high_probability,UE_low_probability
+from environment2.Constant import UE_high_probability, UE_low_probability
+
 
 class UE:
     def __init__(self, position, speed_limit=0):
@@ -48,8 +49,6 @@ class UE:
     def if_link_DPUAV(self, dpuav: DPUAV) -> bool:
         """是否与DPUAV相连"""
         return self.position.if_connect(dpuav.position, dpuav.link_range)
-
-
 
     # 电量相关函数
     def update_energy_state(self):
@@ -138,3 +137,22 @@ class UE:
             print("the ue don't have a task")
             return False
         self.task = None
+
+    def if_have_task(self) -> bool:
+        """UE当前是否有task"""
+        return False if self.task is None else True
+
+    def get_task_require(self)->[float]:
+        """返回UE中task的需求"""
+        if self.if_have_task():
+            return self.task.get_task_require()
+
+    def get_storage_require(self)->[float]:
+        """返回UE中task的存储需求"""
+        if self.if_have_task():
+            return self.task.get_storage_require()
+
+    def get_compute_require(self) -> [float]:
+        """返回UE中task的计算需求"""
+        if self.if_have_task():
+            return self.task.get_compute_require()

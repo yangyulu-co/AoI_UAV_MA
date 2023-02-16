@@ -11,3 +11,13 @@ class Task:
 
     def step(self):
         self.wating_time += 1
+
+    def get_storage_require(self)->float:
+        """返回任务所需的存储空间的大小"""
+        return self.storage
+    def get_compute_require(self)->float:
+        """返回任务所需的计算能力"""
+        return self.compute
+    def get_task_require(self)->[float]:
+        """返回任务所需的存储和计算能力需求"""
+        return [self.storage,self.compute]
