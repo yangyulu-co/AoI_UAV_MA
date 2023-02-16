@@ -76,6 +76,8 @@ class Area:
         """所有DPUAV组成的列表"""
         self.aoi = [0.0 for _ in range(N_user)]
         """UE的aoi"""
+        self.aoi_history = [self.aoi.copy()]
+        """UE的AoI的历史数据"""
 
     def reset(self):
         # 生成ue,dpuav
@@ -86,7 +88,8 @@ class Area:
         """所有DPUAV组成的列表"""
         self.aoi = [0.0 for _ in range(N_user)]
         """UE的aoi"""
-
+        self.aoi_history = [self.aoi.copy()]
+        """UE的AoI的历史数据"""
         state = self.calcul_state()
         return state
 
@@ -145,8 +148,9 @@ class Area:
         sum_aoi = sum(offload_aoi)
         # target = eta_1 * sum_aoi + eta_2 * sum_dpuav_energy
         """目标函数值"""
-        self.aoi = offload_aoi  # 更新AOI
 
+        self.aoi = offload_aoi  # 更新AOI
+        self.aoi_history.append(offload_aoi.copy()) # 把新的AoI放入AoI历史中
         state = self.calcul_state()
 
         # reward = [-target] * N_DPUAV
@@ -165,6 +169,12 @@ class Area:
 
         return state, reward, done, ''
 
+    def get_aoi_history(self)->[[float]]:
+        """返回aoi的历史变化，格式为[[float]]"""
+        return self.aoi_history
+
+    def get_aoi_sum(self)->float:
+        return np.array(self.aoi_history).sum()
     def calcul_state(self):
         """计算所有UAV的状态信息，以[narray]格式返回"""
         # 公共的环境信息
