@@ -8,7 +8,7 @@ from environment2.Position import Position
 from environment2.Task import Task
 from environment2.UAV import calcul_SNR, calcul_channel_gain
 from environment2.DPUAV import DPUAV
-from environment2.Constant import UE_high_probability, UE_low_probability
+from environment2.Constant import UE_high_probability, UE_low_probability, time_slice
 
 
 class UE:
@@ -41,6 +41,8 @@ class UE:
         self.collect_energy = 5 * (10 ** (-7))
         """UE采集一个数据需要的能量(j)"""
 
+        self.aoi = 0
+        """用户处的aoi"""
     # 距离相关函数
     def distance_DPUAV(self, dpuav: DPUAV) -> float:
         """与DPUAV的距离"""
@@ -59,7 +61,7 @@ class UE:
             self.energy_state = 0
 
     def charge(self, energy: float):
-        """给UE充电，单位为J，返回充电的电量"""
+        """给UE充电，单位为J，返回充入的电量"""
         previous_energy = self.energy  # 充电前的电量
         temp_energy = energy * self.energy_conversion_efficiency
         self.energy = min(self.energy_max, self.energy + temp_energy)
@@ -110,7 +112,7 @@ class UE:
     # 生成数据相关函数
 
     def generate_task(self):
-        """每个时隙的开始执行，按照电量产生数据并消耗能量，如果不生成数据，则waiting_time+1"""
+        """每个时隙的开始执行，按照电量产生数据并消耗能量，如果生成任务，aoi置0，否则aoi+1"""
         generate = None  # 是否产生新数据
         if self.energy_state == 1:
             # 高电量
@@ -120,9 +122,9 @@ class UE:
             generate = random.random() < self.low_probability
         if generate and self.discharge(self.collect_energy):  # 如果要生成新数据和如果电量足够并扣除电量
             self.task = get_random_task()  # 生成新任务
+            self.aoi = 0  #用户处的aoi置0
         else:
-            if self.task is not None:
-                self.task.step()  # waiting_time + 1
+            self.aoi += time_slice
 
     def get_lambda(self) -> float:
         """返回目前UE产生数据的概率"""
@@ -132,11 +134,12 @@ class UE:
             return self.low_probability
 
     def offload_task(self):
-        """UE卸载掉任务"""
+        """UE卸载掉任务,能够卸载返回True，否则False"""
         if self.task is None:
             print("the ue don't have a task")
             return False
         self.task = None
+        return True
 
     def if_have_task(self) -> bool:
         """UE当前是否有task"""

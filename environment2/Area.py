@@ -41,9 +41,6 @@ def generate_solution(ue_num: int) -> list:
     max_count = 3 ** ue_num
     possible_solutions = []
     for i in range(max_count):
-        # code = [0 for _ in range(ue_num)]
-        # for j in range(ue_num):
-        #     code[j] = (i // (3 ** j)) % 3
         code = [(i // (3 ** j)) % 3 for j in range(ue_num)]
         if code.count(1) <= max_compute:  # 如果在DPUAV上计算的没有超出DPUAV的计算上限
             possible_solutions.append(code)
@@ -59,7 +56,7 @@ class Area:
         self.agent_num = N_DPUAV + N_ETUAV  # agent为dpuav和etuav数量之和
         self.action_dim = 2  # 角度和rate
 
-        self.public_state_dim = 4 * N_user  # 用户的AoI、lambda、是否有任务，百分比电量是公有部分
+        self.public_state_dim = 5 * N_user  # 用户的AoI，云端的aoi、lambda、是否有任务，百分比电量是公有部分
         self.private_state_dim = 2 * (N_user + self.agent_num - 1)  # 与其他的无人机和用户的位置关系是私有部分
         self.overall_state_dim = self.public_state_dim + self.agent_num * self.private_state_dim
 
@@ -77,9 +74,9 @@ class Area:
         self.DPUAVs = self.generate_DPUAVs(N_DPUAV)
         """所有DPUAV组成的列表"""
         self.aoi = [0.0 for _ in range(N_user)]
-        """UE的aoi"""
+        """云端的aoi"""
         self.aoi_history = [self.aoi.copy()]
-        """UE的AoI的历史数据"""
+        """云端的AoI的历史数据"""
 
     def reset(self):
         # 生成ue,dpuav
@@ -90,9 +87,9 @@ class Area:
         self.DPUAVs = self.generate_DPUAVs(N_DPUAV)
         """所有DPUAV组成的列表"""
         self.aoi = [0.0 for _ in range(N_user)]
-        """UE的aoi"""
+        """云端的aoi"""
         self.aoi_history = [self.aoi.copy()]
-        """UE的AoI的历史数据"""
+        """云端的AoI的历史数据"""
         state = self.calcul_state()
         return state
 
@@ -136,51 +133,27 @@ class Area:
         plt.show()
 
     def step(self, actions):  # action是每个agent动作向量(ndarray[0-2pi, 0-1])的列表，DP在前ET在后
-        # 由强化学习控制，DPUAV开始移动
+        # 由强化学习控制，DPUAV开始移动----------------------
         dpuav_move_energy = [dpuav.move_by_xy_rate(actions[i][0], actions[i][1])
                              for i, dpuav in enumerate(self.DPUAVs)]
         """DPUAV运动的能耗"""
-        # 由强化学习控制，ETUAV开始运动
+        # 由强化学习控制，ETUAV开始运动----------------------
         etuav_move_energy = [etuav.move_by_xy_rate(actions[N_DPUAV + i][0], actions[N_DPUAV + i][1])
                              for i, etuav in enumerate(self.ETUAVs)]
         """ETUAV运动的能耗"""
 
-        # ETUAV充电,并记录充入的电量
-        etuav_charge_energy = [etuav.charge_all_ues(self.UEs) for etuav in self.ETUAVs]
-        """ETUAV给用户冲入的电量"""
-
-        # 计算ETUAV的目标函数
-        etuav_reward = self.calcul_etuav_target()
-        # 加入能量消耗惩罚
-        for i in range(N_ETUAV):
-            etuav_reward[i] -= etuav_move_energy[i] * 0.0001
-
-        # UE产生数据
-        for ue in self.UEs:
-            ue.generate_task()
-
-        # 计算ETUAV的状态，待写
-        etuav_state = [0]
-
-
-
-
-
-        ## dpuav开始卸载
+        # dpuav开始卸载----------------------------------
 
         # 计算连接情况
         link_dict = get_link_dict(self.UEs, self.DPUAVs)
-
         # 使用穷举方法，决定DPUAV的卸载决策
         offload_choice = self.find_best_offload(link_dict)
-
-
-
         offload_energy = [0.0 for _ in range(N_user)]
         """卸载所需的能量"""
         offload_aoi = [self.aoi[i] + time_slice for i in range(N_user)]
         DPUAV_reduced_aoi = [0.0 for _ in range(N_DPUAV)]
         """此回合中每个DPUAV通过卸载减少的aoi"""
+        # 执行卸载决策
         for dpuav_index, ue_index, choice in offload_choice:
             # 计算能量和aoi
             energy, aoi = self.calcul_single_dpuav_single_ue_energy_aoi(dpuav_index, ue_index, choice)
@@ -189,23 +162,37 @@ class Area:
             offload_aoi[ue_index] = aoi
             # 卸载任务
             self.UEs[ue_index].offload_task()
-        sum_dpuav_energy =sum(dpuav_move_energy) + sum(offload_energy)
+        sum_dpuav_energy = sum(dpuav_move_energy) + sum(offload_energy)
         """DPUAV总的能耗"""
         sum_aoi = sum(offload_aoi)
         """总的aoi"""
-        # target = eta_1 * sum_aoi + eta_2 * sum_dpuav_energy
-        """目标函数值"""
-
         self.aoi = offload_aoi  # 更新AOI
         self.aoi_history.append(offload_aoi.copy())  # 把新的AoI放入AoI历史中
-        # 计算DPUAV的状态，待写
+
+        # ETUAV充电,并记录充入的电量-----------------------
+        etuav_charge_energy = [etuav.charge_all_ues(self.UEs) for etuav in self.ETUAVs]
+        """ETUAV给用户冲入的电量"""
+
+        # UE产生数据-------------------------------------------
+        for ue in self.UEs:
+            ue.generate_task()
+        # 计算所有UAV的状态-------------------------------------
         state = self.calcul_state()
-        # 计算DPUAV的目标函数
-        # reward = [-target] * N_DPUAV
-        reward = DPUAV_reduced_aoi
+
+        # 计算DPUAV的reward------------------------------------
+        dpuav_reward = DPUAV_reduced_aoi
+
+        # 计算ETUAV的reward------------------------------------
+        average_energy = sum([ue.get_energy_percent() for ue in self.UEs]) / N_user
+        """用户平均百分比电量"""
+        etuav_reward = [average_energy] * N_ETUAV
+        # 加入能量消耗惩罚
+        for i in range(N_ETUAV):
+            etuav_reward[i] -= etuav_move_energy[i] * 0.0001
+
+        reward = dpuav_reward + etuav_reward
+
         done = False
-
-
 
         return state, reward, done, ''
 
@@ -223,38 +210,64 @@ class Area:
         return [average_energy] * N_ETUAV
 
     def calcul_state(self):
-        """计算所有UAV的状态信息，以[narray]格式返回"""
+        """计算所有UAV的状态信息，以[ndarray]格式返回"""
         # 公共的环境信息
-        # 所有用户的AOI
-        dpuav_aoi = copy(self.aoi)
+        # 云端的AOI
+        cloud_aoi = copy(self.aoi)
+        # 用户处的aoi
+        ue_aoi = [ue.aoi for ue in self.UEs]
         # 得到UE生成数据的速率
         ue_probability = [ue.get_lambda() for ue in self.UEs]
         # 得到UE是否有数据
         ue_if_task = [1 if ue.if_have_task() else 0 for ue in self.UEs]
-        public_state = dpuav_aoi + ue_probability + ue_if_task
+        # 得到UE的百分比电量
+        ue_energy = [ue.get_energy_percent() for ue in self.UEs]
+        # 得到状态的公共部分
+        public_state = cloud_aoi + ue_aoi + ue_probability + ue_if_task + ue_energy
 
-        state = [None for _ in range(N_DPUAV)]
+        state = [None for _ in range(self.agent_num)]
         for i in range(N_DPUAV):
-            state[i] = np.array(public_state + self.calcul_relative_horizontal_positions("dpuav", i))
-
+            state[i] = np.array(public_state + self.calcul_dpuav_relative_horizontal_positions(i))
+        for i in range(N_ETUAV):
+            state[N_DPUAV + i] = np.array(public_state + self.calcul_etuav_relative_horizontal_positions(i))
         return state
 
-    def calcul_relative_horizontal_positions(self, type: str, index: int):
-        """计算DPUAV或者ETUAV与除自生外所有的UE,ETUAV,DPUAV的相对水平位置"""
+    def calcul_dpuav_relative_horizontal_positions(self, index: int):
+        """计算DPUAV与除自生外的所有UE,DPUAV,ETUAV的相对水平位置"""
         relative_positions = []
-
         center_position = self.DPUAVs[index].position
         for ue in self.UEs:
             rel_position = center_position.relative_horizontal_position_percent \
                 (ue.position, self.limit[1, 0], self.limit[1, 1])
             relative_positions += rel_position
-
         for i, dpuav in enumerate(self.DPUAVs):
             if i != index:
                 rel_position = center_position.relative_horizontal_position_percent \
                     (dpuav.position, self.limit[1, 0], self.limit[1, 1])
                 relative_positions += rel_position
+        for i, etuav in enumerate(self.ETUAVs):
+            rel_position = center_position.relative_horizontal_position_percent \
+                (etuav.position, self.limit[1, 0], self.limit[1, 1])
+            relative_positions += rel_position
+        return relative_positions
 
+    def calcul_etuav_relative_horizontal_positions(self, index: int):
+        """计算ETUAV与除自生外的所有UE,DPUAV,ETUAV的相对水平位置"""
+        relative_positions = []
+        center_position = self.DPUAVs[index].position
+        for ue in self.UEs:
+            rel_position = center_position.relative_horizontal_position_percent \
+                (ue.position, self.limit[1, 0], self.limit[1, 1])
+            relative_positions += rel_position
+        for i, dpuav in enumerate(self.DPUAVs):
+            rel_position = center_position.relative_horizontal_position_percent \
+                (dpuav.position, self.limit[1, 0], self.limit[1, 1])
+            relative_positions += rel_position
+        for i, etuav in enumerate(self.ETUAVs):
+            if i != index:
+                rel_position = center_position.relative_horizontal_position_percent \
+                    (etuav.position, self.limit[1, 0], self.limit[1, 1])
+                relative_positions += rel_position
         return relative_positions
 
     def calcul_single_dpuav_single_ue_energy_aoi(self, dpuav_index: int, ue_index: int, offload_choice):

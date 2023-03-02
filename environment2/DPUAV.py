@@ -56,12 +56,12 @@ class DPUAV(UAV):
         if decisions == 0:  # 不卸载
             return None
         elif decisions == 1:  # 卸载到UAV
-            waiting_time = ue.task.wating_time
+            waiting_time = ue.aoi
             transmission_time = ue.get_transmission_time(self)
             compute_time = self.get_compute_time(ue.task)
             return waiting_time + transmission_time + compute_time
         else:  # 卸载到BS
-            waiting_time = ue.task.wating_time
+            waiting_time = ue.aoi
             transmission_time_1 = ue.get_transmission_time(self)
             transmission_time_2 = self.get_transmission_time_with_BS(ue)
             compute_time = ue.task.compute / bs_computing_capacity

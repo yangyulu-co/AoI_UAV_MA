@@ -6,11 +6,9 @@ class Task:
         """任务的大小，bit数"""
         self.compute = compute
         """计算任务需要的CPU周期"""
-        self.wating_time = 0
-        """任务的等待时间"""
 
-    def step(self):
-        self.wating_time += 1
+
+
 
     def get_storage_require(self)->float:
         """返回任务所需的存储空间的大小"""
