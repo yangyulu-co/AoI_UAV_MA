@@ -1,6 +1,6 @@
 N_user = 16
 """用户数"""
-N_ETUAV = 0
+N_ETUAV = 2
 """ETUAV数量"""
 N_DPUAV = 2
 "DPUAV数量"

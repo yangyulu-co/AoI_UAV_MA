@@ -56,11 +56,12 @@ class Area:
 
     def __init__(self, x_range=500.0, y_range=500.0):
 
-        self.agent_num = N_DPUAV
+        self.agent_num = N_DPUAV + N_ETUAV  # agent为dpuav和etuav数量之和
         self.action_dim = 2  # 角度和rate
-        self.overall_state_dim = 3 * N_user + (self.agent_num) * 2 * (N_user + self.agent_num - 1)
-        self.public_state_dim = 3 * N_user  # 用户的AoI、lambda、队列状况是公有部分
-        self.private_state_dim = 2 * (N_user + self.agent_num - 1)  # 与其他的位置关系是私有部分
+
+        self.public_state_dim = 4 * N_user  # 用户的AoI、lambda、是否有任务，百分比电量是公有部分
+        self.private_state_dim = 2 * (N_user + self.agent_num - 1)  # 与其他的无人机和用户的位置关系是私有部分
+        self.overall_state_dim = self.public_state_dim + self.agent_num * self.private_state_dim
 
         self.limit = np.empty((2, 2), np.float32)
         self.limit[0, 0] = -x_range / 2
@@ -71,7 +72,8 @@ class Area:
         # 生成ue,etuav,dpuav
         self.UEs = self.generate_UEs(N_user)
         """所有ue组成的列表"""
-
+        self.ETUAVs = self.generate_ETUAVs(N_ETUAV)
+        """所有ETUAV组成的列表"""
         self.DPUAVs = self.generate_DPUAVs(N_DPUAV)
         """所有DPUAV组成的列表"""
         self.aoi = [0.0 for _ in range(N_user)]
@@ -83,7 +85,8 @@ class Area:
         # 生成ue,dpuav
         self.UEs = self.generate_UEs(N_user)
         """所有ue组成的列表"""
-
+        self.ETUAVs = self.generate_ETUAVs(N_ETUAV)
+        """所有ETUAV组成的列表"""
         self.DPUAVs = self.generate_DPUAVs(N_DPUAV)
         """所有DPUAV组成的列表"""
         self.aoi = [0.0 for _ in range(N_user)]
@@ -93,46 +96,88 @@ class Area:
         state = self.calcul_state()
         return state
 
-    def render(self,title:str):
+    def render(self, title: str):
         # 画user离散点
         user_x = []
         user_y = []
         for i in range(N_user):
             user_x.append(self.UEs[i].position.data[0, 0])
             user_y.append(self.UEs[i].position.data[0, 1])
-        plt.scatter(user_x, user_y, c='#696969',marker='.',label='UE')
+        plt.scatter(user_x, user_y, c='#696969', marker='.', label='UE')
         # 画出ETUAV轨迹
-        for i in range(N_DPUAV):
+        for i in range(N_ETUAV):
             color = '#1f77b4' if i == 0 else '#ff7f0e'
-            plt.scatter([self.DPUAVs[i].position.data[0, 0]], [self.DPUAVs[i].position.data[0, 1]],marker='o',c=color,label='UAV'+str(i)+' end')
-            plt.plot(self.DPUAVs[i].position.tail[:,0],self.DPUAVs[i].position.tail[:,1],c=color,label='UAV'+str(i))
-            plt.scatter([self.DPUAVs[i].position.tail[0,0]],[self.DPUAVs[i].position.tail[0,1]], marker='x',c=color,label='UAV'+str(i)+' start')
-        # plt.xlim((-250,250))
-        # plt.ylim((-250,250))
+            plt.scatter([self.ETUAVs[i].position.data[0, 0]], [self.ETUAVs[i].position.data[0, 1]], marker='o', c=color)
+            # plt.scatter([self.ETUAVs[i].position.data[0, 0]], [self.ETUAVs[i].position.data[0, 1]], marker='o', c=color,
+            #             label='UAV' + str(i) + ' end')
+            plt.plot(self.ETUAVs[i].position.tail[:, 0], self.ETUAVs[i].position.tail[:, 1], c=color,
+                     label='ETUAV' + str(i))
+            plt.scatter([self.ETUAVs[i].position.tail[0, 0]], [self.ETUAVs[i].position.tail[0, 1]], marker='x', c=color)
+            # plt.scatter([self.ETUAVs[i].position.tail[0, 0]], [self.ETUAVs[i].position.tail[0, 1]], marker='x', c=color,
+            #             label='UAV' + str(i) + ' start')
+        # 画出DPUAV轨迹
+        for i in range(N_DPUAV):
+            color = '#2ca02c' if i == 0 else '#d62728'
+            plt.scatter([self.DPUAVs[i].position.data[0, 0]], [self.DPUAVs[i].position.data[0, 1]], marker='o', c=color)
+            # plt.scatter([self.ETUAVs[i].position.data[0, 0]], [self.ETUAVs[i].position.data[0, 1]], marker='o', c=color,
+            #             label='UAV' + str(i) + ' end')
+            plt.plot(self.DPUAVs[i].position.tail[:, 0], self.DPUAVs[i].position.tail[:, 1], c=color,
+                     label='DPUAV' + str(i))
+            plt.scatter([self.DPUAVs[i].position.tail[0, 0]], [self.DPUAVs[i].position.tail[0, 1]], marker='x', c=color)
+            # plt.scatter([self.ETUAVs[i].position.tail[0, 0]], [self.ETUAVs[i].position.tail[0, 1]], marker='x', c=color,
+            #             label='UAV' + str(i) + ' start')
+        plt.xlim((-250, 250))
+        plt.ylim((-250, 250))
         plt.xlabel("x(m)")
         plt.ylabel("y(m)")
-        plt.title(title)
+        # plt.title(title)
         plt.legend()
+        plt.savefig(title + ".png", dpi=600)
         plt.show()
+
     def step(self, actions):  # action是每个agent动作向量(ndarray[0-2pi, 0-1])的列表，DP在前ET在后
-        # UE产生数据并冲满电
+        # 由强化学习控制，DPUAV开始移动
+        dpuav_move_energy = [dpuav.move_by_xy_rate(actions[i][0], actions[i][1])
+                             for i, dpuav in enumerate(self.DPUAVs)]
+        """DPUAV运动的能耗"""
+        # 由强化学习控制，ETUAV开始运动
+        etuav_move_energy = [etuav.move_by_xy_rate(actions[N_DPUAV + i][0], actions[N_DPUAV + i][1])
+                             for i, etuav in enumerate(self.ETUAVs)]
+        """ETUAV运动的能耗"""
+
+        # ETUAV充电,并记录充入的电量
+        etuav_charge_energy = [etuav.charge_all_ues(self.UEs) for etuav in self.ETUAVs]
+        """ETUAV给用户冲入的电量"""
+
+        # 计算ETUAV的目标函数
+        etuav_reward = self.calcul_etuav_target()
+        # 加入能量消耗惩罚
+        for i in range(N_ETUAV):
+            etuav_reward[i] -= etuav_move_energy[i] * 0.0001
+
+        # UE产生数据
         for ue in self.UEs:
             ue.generate_task()
-            ue.charge(1.0)
 
-        # 由强化学习控制，UAV开始运动
-        dpuav_move_energy = [dpuav.move_by_xy_rate(actions[i][0], actions[i][1]) for i, dpuav in enumerate(self.DPUAVs)]
-        """DPUAV运动的能耗"""
+        # 计算ETUAV的状态，待写
+        etuav_state = [0]
+
+
+
+
+
+        ## dpuav开始卸载
 
         # 计算连接情况
         link_dict = get_link_dict(self.UEs, self.DPUAVs)
 
-        # 使用穷举方法，决定UAV的卸载决策
+        # 使用穷举方法，决定DPUAV的卸载决策
         offload_choice = self.find_best_offload(link_dict)
-        sum_dpuav_energy = sum(dpuav_move_energy)
-        """DPUAV总的能耗"""
+
+
 
         offload_energy = [0.0 for _ in range(N_user)]
+        """卸载所需的能量"""
         offload_aoi = [self.aoi[i] + time_slice for i in range(N_user)]
         DPUAV_reduced_aoi = [0.0 for _ in range(N_DPUAV)]
         """此回合中每个DPUAV通过卸载减少的aoi"""
@@ -144,37 +189,39 @@ class Area:
             offload_aoi[ue_index] = aoi
             # 卸载任务
             self.UEs[ue_index].offload_task()
-        sum_dpuav_energy += sum(offload_energy)
+        sum_dpuav_energy =sum(dpuav_move_energy) + sum(offload_energy)
+        """DPUAV总的能耗"""
         sum_aoi = sum(offload_aoi)
+        """总的aoi"""
         # target = eta_1 * sum_aoi + eta_2 * sum_dpuav_energy
         """目标函数值"""
 
         self.aoi = offload_aoi  # 更新AOI
-        self.aoi_history.append(offload_aoi.copy()) # 把新的AoI放入AoI历史中
+        self.aoi_history.append(offload_aoi.copy())  # 把新的AoI放入AoI历史中
+        # 计算DPUAV的状态，待写
         state = self.calcul_state()
-
+        # 计算DPUAV的目标函数
         # reward = [-target] * N_DPUAV
         reward = DPUAV_reduced_aoi
         done = False
 
-        # # 画无人机的轨迹
-        # plt.figure()
-        # plt.plot([i.position.data[0][0] for i in self.UEs], [j.position.data[0][1] for j in self.UEs], '*')
-        #
-        # for i in range(N_DPUAV):
-        #     DPUAV_tail = self.DPUAVs[i].get_tail()
-        #     plt.plot(DPUAV_tail[0][:], DPUAV_tail[1][:], '-o')
-        # plt.savefig('test/render.png', format='png')
-        # plt.close()
+
 
         return state, reward, done, ''
 
-    def get_aoi_history(self)->[[float]]:
+    def get_aoi_history(self) -> [[float]]:
         """返回aoi的历史变化，格式为[[float]]"""
         return self.aoi_history
 
-    def get_aoi_sum(self)->float:
+    def get_aoi_sum(self) -> float:
         return np.array(self.aoi_history).sum()
+
+    def calcul_etuav_target(self) -> [float]:
+        """计算etuav的目标函数值"""
+        average_energy = sum([ue.get_energy_percent() for ue in self.UEs]) / N_user
+        """用户平均百分比电量"""
+        return [average_energy] * N_ETUAV
+
     def calcul_state(self):
         """计算所有UAV的状态信息，以[narray]格式返回"""
         # 公共的环境信息
