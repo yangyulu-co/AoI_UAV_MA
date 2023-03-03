@@ -84,7 +84,7 @@ class Runner:
         # 保存训练中AoI的变化
         np.savetxt(self.save_path + '/AoIs.csv', AoIs)
         plt.figure()
-        plt.plot(range(len(returns)), returns)
+        plt.plot(range(len(AoIs)), AoIs)
         plt.xlabel('episode * ' + str(self.args.evaluate_rate / self.episode_limit))
         plt.ylabel('average AoIs')
         plt.savefig(self.save_path + '/AoI.png', format='png')
@@ -94,12 +94,12 @@ class Runner:
                 self.save_actor_critic_loss(agent_id, critic_loss['agent_%d' % agent_id], actor_loss['agent_%d' % agent_id])
 
     def evaluate(self):
-        returns = [0.0 for _ in range(self.args.evaluate_episodes)]
+        returns = [None for _ in range(self.args.evaluate_episodes)]
         AoIs = [0.0 for _ in range(self.args.evaluate_episodes)]
         for episode in range(self.args.evaluate_episodes):
             # reset the environment
             s = self.env.reset()
-            rewards = 0
+            rewards = [0 for _ in range(self.args.n_agents)]
             for time_step in range(self.args.evaluate_episode_len):
 
                 actions = []
@@ -109,7 +109,8 @@ class Runner:
                         actions.append(action)
                 # print(actions)
                 s_next, r, done, info = self.env.step(actions)
-                rewards += r[0]
+                for i in range(self.args.n_agents):
+                    rewards[i] += r[i]
                 s = s_next
 
             # self.env.render('UAV trajectory obtained by RL')
@@ -118,7 +119,9 @@ class Runner:
             returns[episode] = rewards
             AoIs[episode] = self.env.get_aoi_sum()
             # print('Returns is', rewards)
-        return sum(returns) / self.args.evaluate_episodes, sum(AoIs) / self.args.evaluate_episodes
+        returns = np.array(returns)
+        AoIs = np.array(AoIs)
+        return np.mean(returns,axis=0), np.mean(AoIs)
 
     def save_actor_critic_loss(self, agent_id, critic_loss_single, actor_loss_single):
         np.savetxt(self.save_path + '/agent_%d/critic_loss.csv' % agent_id,

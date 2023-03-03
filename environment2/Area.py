@@ -254,7 +254,7 @@ class Area:
     def calcul_etuav_relative_horizontal_positions(self, index: int):
         """计算ETUAV与除自生外的所有UE,DPUAV,ETUAV的相对水平位置"""
         relative_positions = []
-        center_position = self.DPUAVs[index].position
+        center_position = self.ETUAVs[index].position
         for ue in self.UEs:
             rel_position = center_position.relative_horizontal_position_percent \
                 (ue.position, self.limit[1, 0], self.limit[1, 1])
