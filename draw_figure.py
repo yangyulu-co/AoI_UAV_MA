@@ -25,10 +25,10 @@ if __name__ == '__main__':
     print('weight mean:', np.mean(weight_rewards), ' var:', np.var(weight_rewards))
     test_count = [_ for _ in range(np.size(ai_rewards,0))]
     plt.figure()
-    plt.plot(test_count,ai_rewards,label='RL rewards',c='#87CEEB')
-    plt.plot(test_count,weight_rewards,label='weight strategy rewards',c='#9AFF9A')
+    plt.plot(test_count,ai_rewards,label='M2DDPG rewards',c='#87CEEB')
+    plt.plot(test_count,weight_rewards,label='Weight strategy rewards',c='#9AFF9A')
     plt.xlabel("Episode")
     plt.ylabel("Reward")
-    plt.title("Accumulated rewards compare")
+    # plt.title("Accumulated rewards compare")
     plt.legend()
     plt.show()
