@@ -56,9 +56,12 @@ class Area:
         self.agent_num = N_DPUAV + N_ETUAV  # agent为dpuav和etuav数量之和
         self.action_dim = 2  # 角度和rate
 
-        self.public_state_dim = 5 * N_user  # 用户的AoI，云端的aoi、lambda、是否有任务，百分比电量是公有部分
-        self.private_state_dim = 2 * (N_user + self.agent_num - 1)  # 与其他的无人机和用户的位置关系是私有部分
-        self.overall_state_dim = self.public_state_dim + self.agent_num * self.private_state_dim
+        self.public_state_dim = 0
+
+        dp_state_dim = 4 * N_user + 2 * (N_user + self.agent_num - 1)  # 用户的aoi,云端的aoi,lambda,是否有任务和相对位置
+        et_state_dim = N_user + 2 * (N_user + self.agent_num - 1)  # 用户的电量和相对位置
+        self.private_state_dim = [dp_state_dim] * N_DPUAV + [et_state_dim] * N_ETUAV
+        self.overall_state_dim = self.public_state_dim + sum(self.private_state_dim)
 
         self.limit = np.empty((2, 2), np.float32)
         self.limit[0, 0] = -x_range / 2
@@ -173,6 +176,14 @@ class Area:
         etuav_charge_energy = [etuav.charge_all_ues(self.UEs) for etuav in self.ETUAVs]
         """ETUAV给用户冲入的电量"""
 
+        # 计算ETUAV的reward------------------------------------
+        average_energy = sum([ue.get_energy_percent() for ue in self.UEs]) / N_user
+        """用户平均百分比电量"""
+        etuav_reward = [average_energy] * N_ETUAV
+        # 加入能量消耗惩罚
+        for i in range(N_ETUAV):
+            etuav_reward[i] -= etuav_move_energy[i] * 0.0001
+
         # UE产生数据-------------------------------------------
         for ue in self.UEs:
             ue.generate_task()
@@ -181,14 +192,6 @@ class Area:
 
         # 计算DPUAV的reward------------------------------------
         dpuav_reward = DPUAV_reduced_aoi
-
-        # 计算ETUAV的reward------------------------------------
-        average_energy = sum([ue.get_energy_percent() for ue in self.UEs]) / N_user
-        """用户平均百分比电量"""
-        etuav_reward = [average_energy] * N_ETUAV
-        # 加入能量消耗惩罚
-        for i in range(N_ETUAV):
-            etuav_reward[i] -= etuav_move_energy[i] * 0.0001
 
         reward = dpuav_reward + etuav_reward
 
@@ -223,14 +226,18 @@ class Area:
         # 得到UE的百分比电量
         ue_energy = [ue.get_energy_percent() for ue in self.UEs]
         # 得到状态的公共部分
-        public_state = cloud_aoi + ue_aoi + ue_probability + ue_if_task + ue_energy
+        # public_state = cloud_aoi + ue_aoi + ue_probability + ue_if_task + ue_energy
+        # public_state = ue_energy
+        # state = [None for _ in range(self.agent_num)]
+        # for i in range(N_DPUAV):
+        #     state[i] = np.array(public_state + self.calcul_dpuav_relative_horizontal_positions(i))
+        # for i in range(N_ETUAV):
+        #     state[N_DPUAV + i] = np.array(public_state + self.calcul_etuav_relative_horizontal_positions(i))
 
-        state = [None for _ in range(self.agent_num)]
-        for i in range(N_DPUAV):
-            state[i] = np.array(public_state + self.calcul_dpuav_relative_horizontal_positions(i))
-        for i in range(N_ETUAV):
-            state[N_DPUAV + i] = np.array(public_state + self.calcul_etuav_relative_horizontal_positions(i))
-        return state
+        dp_state = [np.array(cloud_aoi + ue_aoi + ue_probability + ue_if_task +
+                             self.calcul_dpuav_relative_horizontal_positions(i)) for i in range(N_DPUAV)]
+        etuav_state = [np.array(ue_energy + self.calcul_etuav_relative_horizontal_positions(i)) for i in range(N_ETUAV)]
+        return dp_state + etuav_state
 
     def calcul_dpuav_relative_horizontal_positions(self, index: int):
         """计算DPUAV与除自生外的所有UE,DPUAV,ETUAV的相对水平位置"""

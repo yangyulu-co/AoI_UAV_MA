@@ -10,7 +10,7 @@ def get_args():
     parser = argparse.ArgumentParser("Reinforcement Learning experiments for multiagent environments")
     # Environment
     parser.add_argument("--max-episode-len", type=int, default=100, help="maximum episode length")
-    parser.add_argument("--time-steps", type=int, default=50000, help="number of time steps")
+    parser.add_argument("--time-steps", type=int, default=100000, help="number of time steps")
     # Core training parameters
     parser.add_argument("--lr-actor", type=float, default=1e-4, help="learning rate of actor")
     parser.add_argument("--lr-critic", type=float, default=1e-3, help="learning rate of critic")

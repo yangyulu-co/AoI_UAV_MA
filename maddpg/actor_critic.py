@@ -8,7 +8,7 @@ class Actor(nn.Module):
     def __init__(self, args, agent_id):
         super(Actor, self).__init__()
         self.max_action = args.high_action
-        self.fc1 = nn.Linear(args.public_obs_shape + args.private_obs_shape, 64)
+        self.fc1 = nn.Linear(args.public_obs_shape + args.private_obs_shape[agent_id], 64)
         # self.fc2 = nn.Linear(64, 64)
         # self.fc3 = nn.Linear(64, 64)
         self.action_out = nn.Linear(64, args.action_shape[agent_id])

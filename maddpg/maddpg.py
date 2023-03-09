@@ -165,9 +165,12 @@ class MADDPG:
                 temp = np.empty([self.args.batch_size, self.args.overall_obs_shape - self.args.public_obs_shape])
                 for i in range(self.args.batch_size):
                     overall_state[i][:self.args.public_obs_shape] = state[0][i][:self.args.public_obs_shape]
+                    loc = 0
+                    # overall_state[i][:self.args.public_obs_shape] = state[self.agent_id][i][:self.args.public_obs_shape]
                     for j in range(self.args.n_agents):
-                        temp[i][j*self.args.private_obs_shape:(j+1)*self.args.private_obs_shape] = \
+                        temp[i][loc: loc + self.args.private_obs_shape[j]] = \
                             state[j][i][self.args.public_obs_shape:]
+                        loc += self.args.private_obs_shape[j]
                     overall_state[i][self.args.public_obs_shape:] = temp[i][:]
 
             return torch.tensor(overall_state, dtype=torch.float32)
