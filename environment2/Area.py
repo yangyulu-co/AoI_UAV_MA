@@ -58,7 +58,7 @@ class Area:
 
         self.public_state_dim = 0
 
-        dp_state_dim = 4 * N_user + 2 * (N_user + self.agent_num - 1)  # 用户的aoi,云端的aoi,lambda,是否有任务和相对位置
+        dp_state_dim = 4 * N_user + 2 * (N_user + self.agent_num - 1)  # 用户的0.8oi,云端的aoi,lambda,是否有任务和相对位置
         et_state_dim = N_user + 2 * (N_user + self.agent_num - 1)  # 用户的电量和相对位置
         self.private_state_dim = [dp_state_dim] * N_DPUAV + [et_state_dim] * N_ETUAV
         self.overall_state_dim = self.public_state_dim + sum(self.private_state_dim)
@@ -163,8 +163,8 @@ class Area:
             offload_energy[ue_index] = energy
             DPUAV_reduced_aoi[dpuav_index] += offload_aoi[ue_index] - aoi
             offload_aoi[ue_index] = aoi
-            # 卸载任务
-            self.UEs[ue_index].offload_task()
+            # 卸载任务,UE消耗电量传输
+            self.UEs[ue_index].offload_task(self.DPUAVs[dpuav_index])
         sum_dpuav_energy = sum(dpuav_move_energy) + sum(offload_energy)
         """DPUAV总的能耗"""
         sum_aoi = sum(offload_aoi)

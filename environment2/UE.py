@@ -43,6 +43,7 @@ class UE:
 
         self.aoi = 0
         """用户处的aoi"""
+
     # 距离相关函数
     def distance_DPUAV(self, dpuav: DPUAV) -> float:
         """与DPUAV的距离"""
@@ -122,7 +123,7 @@ class UE:
             generate = random.random() < self.low_probability
         if generate and self.discharge(self.collect_energy):  # 如果要生成新数据和如果电量足够并扣除电量
             self.task = get_random_task()  # 生成新任务
-            self.aoi = 0  #用户处的aoi置0
+            self.aoi = 0  # 用户处的aoi置0
         else:
             self.aoi += time_slice
 
@@ -133,24 +134,36 @@ class UE:
         else:
             return self.low_probability
 
-    def offload_task(self):
-        """UE卸载掉任务,能够卸载返回True，否则False"""
+    # def offload_task(self):
+    #     """UE卸载掉任务,能够卸载返回True，否则False"""
+    #     if self.task is None:
+    #         print("the ue don't have a task")
+    #         return False
+    #     self.task = None
+    #     return True
+
+    def offload_task(self,uav:DPUAV):
+        """UE将任务卸载到uav上，需要消耗传输能量，能够卸载返回True,否则False"""
         if self.task is None:
             print("the ue don't have a task")
             return False
-        self.task = None
+        energy = self.get_transmission_energy(uav)
+        if self.discharge(energy) is False:
+            # print("the ue don't have enough energy to transmit")
+            return False
         return True
+
 
     def if_have_task(self) -> bool:
         """UE当前是否有task"""
         return False if self.task is None else True
 
-    def get_task_require(self)->[float]:
+    def get_task_require(self) -> [float]:
         """返回UE中task的需求"""
         if self.if_have_task():
             return self.task.get_task_require()
 
-    def get_storage_require(self)->[float]:
+    def get_storage_require(self) -> [float]:
         """返回UE中task的存储需求"""
         if self.if_have_task():
             return self.task.get_storage_require()
