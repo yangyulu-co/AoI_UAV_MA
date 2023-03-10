@@ -58,7 +58,7 @@ class Area:
 
         self.public_state_dim = 0
 
-        dp_state_dim = 4 * N_user + 2 * (N_user + self.agent_num - 1)  # 用户的0.8oi,云端的aoi,lambda,是否有任务和相对位置
+        dp_state_dim = 5 * N_user + 2 * (N_user + self.agent_num - 1)  # 用户的电量,Aoi,云端的aoi,lambda,是否有任务和相对位置
         et_state_dim = N_user + 2 * (N_user + self.agent_num - 1)  # 用户的电量和相对位置
         self.private_state_dim = [dp_state_dim] * N_DPUAV + [et_state_dim] * N_ETUAV
         self.overall_state_dim = self.public_state_dim + sum(self.private_state_dim)
@@ -234,7 +234,7 @@ class Area:
         # for i in range(N_ETUAV):
         #     state[N_DPUAV + i] = np.array(public_state + self.calcul_etuav_relative_horizontal_positions(i))
 
-        dp_state = [np.array(cloud_aoi + ue_aoi + ue_probability + ue_if_task +
+        dp_state = [np.array(cloud_aoi + ue_aoi + ue_probability + ue_if_task + ue_energy +
                              self.calcul_dpuav_relative_horizontal_positions(i)) for i in range(N_DPUAV)]
         etuav_state = [np.array(ue_energy + self.calcul_etuav_relative_horizontal_positions(i)) for i in range(N_ETUAV)]
         return dp_state + etuav_state
