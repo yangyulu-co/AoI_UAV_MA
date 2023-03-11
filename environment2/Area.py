@@ -151,8 +151,8 @@ class Area:
         link_dict = get_link_dict(self.UEs, self.DPUAVs)
         # 使用穷举方法，决定DPUAV的卸载决策
         offload_choice = self.find_best_offload(link_dict)
-        offload_energy = [0.0 for _ in range(N_user)]
-        """卸载所需的能量"""
+        dpuav_offload_energy = [0.0 for _ in range(N_DPUAV)]
+        """dpuav无人机卸载所需的能量"""
         offload_aoi = [self.aoi[i] + time_slice for i in range(N_user)]
         DPUAV_reduced_aoi = [0.0 for _ in range(N_DPUAV)]
         """此回合中每个DPUAV通过卸载减少的aoi"""
@@ -160,12 +160,12 @@ class Area:
         for dpuav_index, ue_index, choice in offload_choice:
             # 计算能量和aoi
             energy, aoi = self.calcul_single_dpuav_single_ue_energy_aoi(dpuav_index, ue_index, choice)
-            offload_energy[ue_index] = energy
+            dpuav_offload_energy[dpuav_index] = energy
             DPUAV_reduced_aoi[dpuav_index] += offload_aoi[ue_index] - aoi
             offload_aoi[ue_index] = aoi
             # 卸载任务,UE消耗电量传输
             self.UEs[ue_index].offload_task(self.DPUAVs[dpuav_index])
-        sum_dpuav_energy = sum(dpuav_move_energy) + sum(offload_energy)
+        dpuav_energy = [dpuav_move_energy[_]+dpuav_offload_energy[_] for _ in range(N_DPUAV)]
         """DPUAV总的能耗"""
         sum_aoi = sum(offload_aoi)
         """总的aoi"""
@@ -182,7 +182,7 @@ class Area:
         etuav_reward = [average_energy] * N_ETUAV
         # 加入能量消耗惩罚
         for i in range(N_ETUAV):
-            etuav_reward[i] -= etuav_move_energy[i] * 0.0001
+            etuav_reward[i] -= etuav_move_energy[i] * eta_3
 
         # UE产生数据-------------------------------------------
         for ue in self.UEs:
@@ -191,7 +191,8 @@ class Area:
         state = self.calcul_state()
 
         # 计算DPUAV的reward------------------------------------
-        dpuav_reward = DPUAV_reduced_aoi
+
+        dpuav_reward = [DPUAV_reduced_aoi[_] - eta_2 * dpuav_energy[_] for _ in range(N_DPUAV)]
 
         reward = dpuav_reward + etuav_reward
 

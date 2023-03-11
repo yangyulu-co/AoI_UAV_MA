@@ -12,9 +12,9 @@ bs_computing_capacity = 25 * (10 ** 7)
 """BS的计算能力，单位为cpu cycle/时间间隔"""
 eta_1 = 1
 """AOI的权重"""
-eta_2 = 0
+eta_2 = 0.0001
 """DPUAV能耗的权重"""
-eta_3 = 1
+eta_3 = 0.0001
 """ETUAV能耗的权重"""
 ETUAV_height = 80
 """ETUAV飞行高度(m)"""
