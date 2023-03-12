@@ -32,6 +32,8 @@ class Runner:
         """训练过程中评估的reward"""
         AoIs = []
         """训练过程中评估的AoI"""
+        UAVs_energy = []
+        """训练过程中评估的UAV的能耗"""
         actor_loss = dict()
         critic_loss = dict()
         for i in range(self.args.n_agents):
@@ -66,11 +68,11 @@ class Runner:
                     actor_loss['agent_%d' % agent_id] = np.append(actor_loss['agent_%d' % agent_id], actor_loss_temp)
 
             if time_step > 0 and time_step % self.args.evaluate_rate == 0:
-                evaluate_reward, evaluate_aoi = self.evaluate()
-                print('Returns is', evaluate_reward,'   AoIs is', evaluate_aoi)
+                evaluate_reward, evaluate_aoi, evaluate_uav_energy = self.evaluate()
+                print('Returns is', evaluate_reward,'   AoIs is', evaluate_aoi,'  UAV energy is',evaluate_uav_energy)
                 returns.append(evaluate_reward)
                 AoIs.append(evaluate_aoi)
-
+                UAVs_energy.append(evaluate_uav_energy)
             self.noise = max(0.05, self.noise - 0.0000005)
             self.epsilon = max(0.05, self.epsilon - 0.0000005)
         # 保存训练中reward的变化
@@ -89,13 +91,22 @@ class Runner:
         plt.ylabel('average AoIs')
         plt.savefig(self.save_path + '/AoI.png', format='png')
         plt.close()
+        # 保存训练中uav能耗的变化
+        np.savetxt(self.save_path + '/UAVs_energy.csv', UAVs_energy)
+        plt.figure()
+        plt.plot(range(len(UAVs_energy)), UAVs_energy)
+        plt.xlabel('episode * ' + str(self.args.evaluate_rate / self.episode_limit))
+        plt.ylabel('UAVs\' energy')
+        plt.savefig(self.save_path + '/UAVs\' energy.png', format='png')
+        plt.close()
         if self.args.save_loss:
             for agent_id, agent in enumerate(self.agents):
                 self.save_actor_critic_loss(agent_id, critic_loss['agent_%d' % agent_id], actor_loss['agent_%d' % agent_id])
 
     def evaluate(self):
-        returns = [None for _ in range(self.args.evaluate_episodes)]
+        returns = [0.0 for _ in range(self.args.evaluate_episodes)]
         AoIs = [0.0 for _ in range(self.args.evaluate_episodes)]
+        uav_energy = [0.0 for _ in range(self.args.evaluate_episodes)]
         for episode in range(self.args.evaluate_episodes):
             # reset the environment
             s = self.env.reset()
@@ -118,10 +129,15 @@ class Runner:
             # print(rewards)
             returns[episode] = rewards
             AoIs[episode] = self.env.get_aoi_sum()
+            uav_energy[episode] = self.env.get_uav_energy_sum()
             # print('Returns is', rewards)
         returns = np.array(returns)
         AoIs = np.array(AoIs)
-        return np.mean(returns,axis=0), np.mean(AoIs)
+        uav_energy = np.array(uav_energy)
+        average_uav_energy = np.mean(uav_energy,axis=0)
+        """无人机在整个过程中的耗能，长度为agent_num，格式为ndarry"""
+        # print(np.mean(uav_energy,axis=0))
+        return np.mean(returns,axis=0), np.mean(AoIs), average_uav_energy
 
     def save_actor_critic_loss(self, agent_id, critic_loss_single, actor_loss_single):
         np.savetxt(self.save_path + '/agent_%d/critic_loss.csv' % agent_id,

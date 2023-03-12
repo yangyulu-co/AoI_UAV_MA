@@ -80,6 +80,10 @@ class Area:
         """云端的aoi"""
         self.aoi_history = [self.aoi.copy()]
         """云端的AoI的历史数据"""
+        self.ETUAVs_energy_history = []
+        """所有ETUAV消耗能量的历史数据"""
+        self.DPUAVs_energy_history = []
+        """所有DPUAV消耗能量的历史数据"""
 
     def reset(self):
         # 生成ue,dpuav
@@ -93,6 +97,10 @@ class Area:
         """云端的aoi"""
         self.aoi_history = [self.aoi.copy()]
         """云端的AoI的历史数据"""
+        self.ETUAVs_energy_history = []
+        """所有ETUAV消耗能量的历史数据"""
+        self.DPUAVs_energy_history = []
+        """所有DPUAV消耗能量的历史数据"""
         state = self.calcul_state()
         return state
 
@@ -103,7 +111,7 @@ class Area:
         for i in range(N_user):
             user_x.append(self.UEs[i].position.data[0, 0])
             user_y.append(self.UEs[i].position.data[0, 1])
-        plt.scatter(user_x, user_y, c='#696969', marker='.', label='UE')
+        plt.scatter(user_x, user_y, c='#696969', marker='.', label='SN')
         # 画出ETUAV轨迹
         for i in range(N_ETUAV):
             color = '#1f77b4' if i == 0 else '#ff7f0e'
@@ -111,7 +119,7 @@ class Area:
             # plt.scatter([self.ETUAVs[i].position.data[0, 0]], [self.ETUAVs[i].position.data[0, 1]], marker='o', c=color,
             #             label='UAV' + str(i) + ' end')
             plt.plot(self.ETUAVs[i].position.tail[:, 0], self.ETUAVs[i].position.tail[:, 1], c=color,
-                     label='ETUAV' + str(i))
+                     label='ET-UAV ' + str(i))
             plt.scatter([self.ETUAVs[i].position.tail[0, 0]], [self.ETUAVs[i].position.tail[0, 1]], marker='x', c=color)
             # plt.scatter([self.ETUAVs[i].position.tail[0, 0]], [self.ETUAVs[i].position.tail[0, 1]], marker='x', c=color,
             #             label='UAV' + str(i) + ' start')
@@ -122,7 +130,7 @@ class Area:
             # plt.scatter([self.ETUAVs[i].position.data[0, 0]], [self.ETUAVs[i].position.data[0, 1]], marker='o', c=color,
             #             label='UAV' + str(i) + ' end')
             plt.plot(self.DPUAVs[i].position.tail[:, 0], self.DPUAVs[i].position.tail[:, 1], c=color,
-                     label='DPUAV' + str(i))
+                     label='DO-UAV ' + str(i))
             plt.scatter([self.DPUAVs[i].position.tail[0, 0]], [self.DPUAVs[i].position.tail[0, 1]], marker='x', c=color)
             # plt.scatter([self.ETUAVs[i].position.tail[0, 0]], [self.ETUAVs[i].position.tail[0, 1]], marker='x', c=color,
             #             label='UAV' + str(i) + ' start')
@@ -130,7 +138,6 @@ class Area:
         plt.ylim((-250, 250))
         plt.xlabel("x(m)")
         plt.ylabel("y(m)")
-        # plt.title(title)
         plt.legend()
         plt.savefig(title + ".png", dpi=600)
         plt.show()
@@ -165,7 +172,7 @@ class Area:
             offload_aoi[ue_index] = aoi
             # 卸载任务,UE消耗电量传输
             self.UEs[ue_index].offload_task(self.DPUAVs[dpuav_index])
-        dpuav_energy = [dpuav_move_energy[_]+dpuav_offload_energy[_] for _ in range(N_DPUAV)]
+        dpuav_energy = [dpuav_move_energy[_] + dpuav_offload_energy[_] for _ in range(N_DPUAV)]
         """DPUAV总的能耗"""
         sum_aoi = sum(offload_aoi)
         """总的aoi"""
@@ -198,6 +205,8 @@ class Area:
 
         done = False
 
+        self.DPUAVs_energy_history.append(dpuav_energy.copy())
+        self.ETUAVs_energy_history.append(etuav_move_energy.copy())
         return state, reward, done, ''
 
     def get_aoi_history(self) -> [[float]]:
@@ -205,7 +214,22 @@ class Area:
         return self.aoi_history
 
     def get_aoi_sum(self) -> float:
+        """返回整个过程中aoi的总和"""
         return np.array(self.aoi_history).sum()
+
+    def get_dpuav_energy_sum(self):
+        """返回整个过程中dpuav消耗能量的总和"""
+        return np.array(self.DPUAVs_energy_history).sum(axis=0)
+
+    def get_etuav_energy_sum(self):
+        """返回整个过程中etuav消耗能量的总和"""
+        return np.array(self.ETUAVs_energy_history).sum(axis=0)
+
+    def get_uav_energy_sum(self):
+        """返回整个过程中uav消耗能量的总和，DP在前ET在后"""
+        a = self.get_dpuav_energy_sum()
+        b = self.get_etuav_energy_sum()
+        return np.hstack((a, b))
 
     def calcul_etuav_target(self) -> [float]:
         """计算etuav的目标函数值"""
